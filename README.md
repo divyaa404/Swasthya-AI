@@ -687,11 +687,6 @@ docs/update-section
 
 ---
 
-## 19. License
-
-This project is licensed under the **MIT License** — free to use, modify, and distribute for any purpose with the original copyright notice included. See [LICENSE](LICENSE) for the full text.
-
----
 
 <div align="center">
 
