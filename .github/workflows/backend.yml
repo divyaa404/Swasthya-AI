@@ -16,7 +16,7 @@ jobs:
 
     defaults:
       run:
-        working-directory: backend   # ✅ no need for "cd backend" everywhere
+        working-directory: backend
 
     steps:
       - name: Checkout code
@@ -26,36 +26,33 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'   # ✅ built-in cache (better than manual)
+          cache: 'pip'
 
-      # ✅ Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install --no-cache-dir -r requirements.txt
 
-      # ✅ Safety check (prevents pywinpty-type issues ever again)
       - name: Check unwanted packages
         run: |
           pip list | grep pywinpty && exit 1 || echo "No pywinpty ✅"
 
-      # ✅ Lint (cleaner output)
-      - name: Lint check
+      - name: Code style check (Black)
+        run: |
+          pip install black
+          black --check . || true
+
+      - name: Lint check (Syntax & Logic Errors)
         run: |
           pip install flake8
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      # ✅ Import check (better than only py_compile)
+      - name: Compile check (All Python Files)
+        run: python -m compileall .
+
       - name: Import check
-        run: |
-          python -c "import main"
+        run: python -c "import main"
 
-      # ✅ Syntax check
-      - name: Compile check
-        run: |
-          python -m py_compile main.py
-
-      # ✅ Run tests (if exist)
       - name: Run tests
         run: |
           if [ -f "test_hf_load.py" ]; then
