@@ -355,7 +355,7 @@ export default function ProfileScreen() {
           chronic_conditions: newInfo.chronicConditions,
           vaccinations: newInfo.vaccinations,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'patient_id' });
 
       if (medErr) {
         console.error('Supabase medical info save error:', medErr);

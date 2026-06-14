@@ -497,7 +497,7 @@ export const generateDummyPhoneFromId = (id: string): string => {
 // Supabase Google Auth Flow
 export const signInWithGoogle = async (email?: string, name?: string) => {
   try {
-    const redirectUrl = Linking.createURL('/(auth)/login');
+    const redirectUrl = 'swasthyaai://auth/callback';
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

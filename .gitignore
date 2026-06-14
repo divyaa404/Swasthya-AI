@@ -11,6 +11,7 @@ __pycache__/
 backend/rag/model_cache/
 backend/rag/index/
 backend/ml/saved_models/
+backend/venv/
 
 # 🔥 Expo / React Native
 app/.expo/

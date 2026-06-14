@@ -434,7 +434,7 @@ export default function UserDetailsScreen() {
           weight: weight.trim(),
           height: height.trim(),
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'patient_id' });
 
       if (medError) {
         console.error('Supabase medical details upsert error:', medError);
