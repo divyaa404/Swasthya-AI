@@ -7,6 +7,7 @@ import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import Appointments from './pages/Appointments';
 import Medicine from './pages/Medicine';
+import Scanner from './pages/Scanner';
 import Profile from './pages/Profile';
 import Landing from './pages/Landing';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -34,6 +35,11 @@ function App() {
             <Route path="/medicine" element={
               <ProtectedRoute>
                 <Medicine />
+              </ProtectedRoute>
+            } />
+            <Route path="/scanner" element={
+              <ProtectedRoute>
+                <Scanner />
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
