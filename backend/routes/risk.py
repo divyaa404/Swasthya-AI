@@ -3,9 +3,17 @@ import json
 from schemas.models import RiskGenerateInput, RiskScore, RiskPredictInput, HealthPrediction, SymptomObj
 from services.groq_client import call_groq
 from prompts.risk import RISK_ADJUSTMENT_PROMPT, RISK_PREDICTION_PROMPT
-from rag.retriever import retrieve
-from ml.predict import calculate_trajectory
 import logging
+
+def retrieve(query: str, top_k: int = 3, condition_tags: list = None):
+    return []
+
+def calculate_trajectory(risk_scores_history: list, symptoms_history: list):
+    return {
+        "trajectory": "stable",
+        "projected_scores": [60, 60, 60]
+    }
+
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 

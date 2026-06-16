@@ -16,11 +16,13 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  timestamp?: Date;
+  saveStatus?: any;
 }
 
 export default function AIBotScreen() {
   const [text, setText] = useState('');
-  const [messages, setMessages] = useState<ChatMessage[]>([{ id: '1', role: 'assistant', content: 'I am online and ready to help with your health questions.' }]);
+  const [messages, setMessages] = useState<ChatMessage[]>([{ id: '1', role: 'assistant', content: 'I am online and ready to help with your health questions.', timestamp: new Date() }]);
   const [isLoading, setIsLoading] = useState(false);
   const [userTurnCount, setUserTurnCount] = useState(0);
   const { user } = useAuthStore();
@@ -86,7 +88,7 @@ export default function AIBotScreen() {
   const handleSend = async () => {
     if (!text.trim() || isLoading) return;
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: text };
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: text, timestamp: new Date() };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setText('');
@@ -109,7 +111,9 @@ export default function AIBotScreen() {
         const botMsg: ChatMessage = {
             id: Date.now().toString(),
             role: 'assistant' as const,
-            content: res.bot_reply
+            content: res.bot_reply,
+            timestamp: new Date(),
+            saveStatus: res.save_status || undefined
           };
         const finalMessages = [...updatedMessages, botMsg];
         setMessages(finalMessages);
@@ -149,7 +153,14 @@ export default function AIBotScreen() {
             <FlatList
               ref={flatListRef}
               data={messages}
-              renderItem={({ item }) => <ChatBubble role={item.role} content={item.content} />}
+              renderItem={({ item }) => (
+                <ChatBubble 
+                  role={item.role} 
+                  content={item.content} 
+                  timestamp={item.timestamp} 
+                  saveStatus={item.saveStatus} 
+                />
+              )}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.messageList}
               style={styles.flatList}

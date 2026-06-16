@@ -8,3 +8,5 @@ python-dotenv
 python-multipart
 qrcode
 psycopg2-binary
+neo4j
+groq

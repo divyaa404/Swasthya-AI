@@ -40,6 +40,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  saveStatus?: any;
 }
 
 interface AgentThought {
@@ -137,6 +138,7 @@ export default function ChatScreen() {
 
   // History states
   const [showHistory, setShowHistory] = useState(false);
+  const [historyList, setHistoryList] = useState<HistoryItem[]>([]);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const slideAnim = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = Dimensions.get('window');
@@ -506,7 +508,7 @@ export default function ChatScreen() {
     };
 
     try {
-      const response = await fetch(`${BACKEND_URL}${API_ENDPOINTS.CHAT.MESSAGE}`, {
+      const response = await fetch(`${BACKEND_URL}/health/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -518,7 +520,7 @@ export default function ChatScreen() {
       });
       const data = await response.json();
       const reply = data.bot_reply || (voiceLang === 'hi-IN' ? getFallbackReplyHindi(spokenText) : getFallbackReply(spokenText));
-      speakAIVoiceResponse(reply);
+      speakAIVoiceResponse(reply, data.save_status || undefined);
     } catch (e) {
       console.error(e);
       const fallback = voiceLang === 'hi-IN' ? getFallbackReplyHindi(spokenText) : getFallbackReply(spokenText);
@@ -526,7 +528,7 @@ export default function ChatScreen() {
     }
   };
 
-  const speakAIVoiceResponse = (replyText: string) => {
+  const speakAIVoiceResponse = (replyText: string, saveStatus?: any) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setVoiceState('speaking');
     setVoiceSubtitles(replyText);
@@ -535,7 +537,8 @@ export default function ChatScreen() {
       id: 'voice-ai-' + Date.now(),
       text: replyText,
       isUser: false,
-      timestamp: new Date()
+      timestamp: new Date(),
+      saveStatus: saveStatus
     };
     setMessages(prev => [...prev, aiMessage]);
 
@@ -571,8 +574,56 @@ export default function ChatScreen() {
   useEffect(() => {
     if (user) {
       fetchUserName();
+      fetchHistorySummaries();
     }
   }, [user]);
+
+  const fetchHistorySummaries = async () => {
+    try {
+      const activePatientId = user?.id || 'demo-patient';
+      const { data, error } = await supabase
+        .from('daily_health_summaries')
+        .select('*')
+        .eq('patient_id', activePatientId)
+        .order('summary_date', { ascending: false });
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        const formatted: HistoryItem[] = data.map((item) => {
+          const dateObj = new Date(item.summary_date);
+          const symptoms = item.symptoms_reported || [];
+          const facts = item.facts_mentioned || [];
+          const meds = item.medications_mentioned || [];
+          const surgeries = item.surgeries_mentioned || [];
+
+          return {
+            id: item.id,
+            date: dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+            time: 'Daily Sync',
+            shortDate: dateObj.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+            overallSummary: item.summary_text || 'No summary text recorded.',
+            agents: [
+              {
+                name: 'Clinical Extractor',
+                role: 'Data Miner',
+                thought: `Extracted details from today's chat. Identified ${symptoms.length} symptoms, ${meds.length} medications, ${facts.length} habits.`
+              },
+              {
+                name: 'Neo4j Sync Agent',
+                role: 'Graph Database Writer',
+                thought: `Successfully committed ${symptoms.length + meds.length + facts.length + surgeries.length} items to AuraDB knowledge graph.`
+              }
+            ]
+          };
+        });
+        setHistoryList(formatted);
+      } else {
+        setHistoryList([]);
+      }
+    } catch (err) {
+      console.error('fetchHistorySummaries error:', err);
+    }
+  };
 
   const fetchUserName = async () => {
     const { data } = await supabase
@@ -648,7 +699,7 @@ export default function ChatScreen() {
       pending_doctor_questions: []
     };
 
-    fetch(`${BACKEND_URL}${API_ENDPOINTS.CHAT.MESSAGE}`, {
+    fetch(`${BACKEND_URL}/health/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -666,6 +717,7 @@ export default function ChatScreen() {
           text: data.bot_reply || getFallbackReply(currentInput),
           isUser: false,
           timestamp: new Date(),
+          saveStatus: data.save_status || undefined
         };
         setMessages(prev => [...prev, aiResponse]);
       })
@@ -713,13 +765,57 @@ export default function ChatScreen() {
           <Ionicons name="chatbubble-ellipses" size={16} color="#0474FC" />
         </View>
       )}
-      <View style={[styles.messageBubble, item.isUser ? styles.userBubble : styles.aiBubble]}>
-        <Text style={[styles.messageText, item.isUser ? styles.userText : styles.aiText]}>
-          {item.text}
-        </Text>
-        <Text style={styles.timestamp}>
-          {formatTime(item.timestamp)}
-        </Text>
+      <View style={{ flex: 1, maxWidth: '80%' }}>
+        <View style={[styles.messageBubble, item.isUser ? styles.userBubble : styles.aiBubble]}>
+          <Text style={[styles.messageText, item.isUser ? styles.userText : styles.aiText]}>
+            {item.text}
+          </Text>
+          <Text style={styles.timestamp}>
+            {formatTime(item.timestamp)}
+          </Text>
+        </View>
+
+        {/* Save Status Graph Card */}
+        {item.saveStatus && (
+          <View style={styles.savedDataCard}>
+            <Text style={styles.savedTitle}>✅ {item.saveStatus.action || "Saved to health graph"}</Text>
+            <Text style={styles.savedMessage}>{item.saveStatus.message}</Text>
+            
+            {item.saveStatus.saved_data && Object.keys(item.saveStatus.saved_data).length > 0 && (
+              <View style={styles.detailsContainer}>
+                {Object.entries(item.saveStatus.saved_data).map(([key, list]) => {
+                  if (!Array.isArray(list) || list.length === 0) return null;
+                  return (
+                    <View key={key} style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>
+                        {key.charAt(0).toUpperCase() + key.slice(1)}:
+                      </Text>
+                      {list.map((subItem, idx) => (
+                        <Text key={idx} style={styles.detailValue}>• {subItem}</Text>
+                      ))}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+
+            {item.saveStatus.importance_score !== undefined && (
+              <View style={styles.scoreBar}>
+                <Text style={styles.scoreText}>
+                  Graph Importance Score: {item.saveStatus.importance_score}/10
+                </Text>
+                <View style={styles.track}>
+                  <View
+                    style={[
+                      styles.scoreIndicator,
+                      { width: `${(item.saveStatus.importance_score / 10) * 100}%` },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </View>
       {item.isUser && (
         <View style={styles.userAvatar}>
@@ -765,65 +861,68 @@ export default function ChatScreen() {
             contentContainerStyle={styles.historyContent}
             showsVerticalScrollIndicator={false}
           >
-            {MOCK_HISTORY.map((item, index) => {
-              const isExpanded = !!expandedDays[item.id];
-              return (
-                <View key={item.id} style={styles.timelineRow}>
-                  {/* Left Column: Summary Card */}
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    onPress={() => toggleDayExpand(item.id)}
-                    style={[styles.historyCard, isExpanded && styles.historyCardExpanded]}
-                  >
-                    <View style={styles.cardHeaderRow}>
-                      <Text style={styles.cardDateText}>{item.date} • {item.time}</Text>
-                      <View style={styles.cardHeaderRight}>
-                        <Ionicons
-                          name={isExpanded ? "chevron-up" : "chevron-down"}
-                          size={18}
-                          color="#0474FC"
-                        />
+            {(() => {
+              const displayedHistory = historyList.length > 0 ? historyList : MOCK_HISTORY;
+              return displayedHistory.map((item, index) => {
+                const isExpanded = !!expandedDays[item.id];
+                return (
+                  <View key={item.id} style={styles.timelineRow}>
+                    {/* Left Column: Summary Card */}
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => toggleDayExpand(item.id)}
+                      style={[styles.historyCard, isExpanded && styles.historyCardExpanded]}
+                    >
+                      <View style={styles.cardHeaderRow}>
+                        <Text style={styles.cardDateText}>{item.date} • {item.time}</Text>
+                        <View style={styles.cardHeaderRight}>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={18}
+                            color="#0474FC"
+                          />
+                        </View>
                       </View>
-                    </View>
 
-                    <Text style={styles.cardSummaryText}>{item.overallSummary}</Text>
+                      <Text style={styles.cardSummaryText}>{item.overallSummary}</Text>
 
-                    {isExpanded && (
-                      <View style={styles.expandedSection}>
-                        <View style={styles.divider} />
-                        <Text style={styles.agentSectionTitle}>Agent Diagnostics</Text>
-                        
-                        {item.agents.map((agent, aIdx) => (
-                          <View key={aIdx} style={styles.agentThoughtRow}>
-                            <View style={styles.agentHeader}>
-                              <Ionicons name="hardware-chip-outline" size={14} color="#0474FC" />
-                              <Text style={styles.agentName}>{agent.name}</Text>
-                              <Text style={styles.agentRole}>({agent.role})</Text>
+                      {isExpanded && (
+                        <View style={styles.expandedSection}>
+                          <View style={styles.divider} />
+                          <Text style={styles.agentSectionTitle}>Agent Diagnostics</Text>
+                          
+                          {item.agents.map((agent, aIdx) => (
+                            <View key={aIdx} style={styles.agentThoughtRow}>
+                              <View style={styles.agentHeader}>
+                                <Ionicons name="hardware-chip-outline" size={14} color="#0474FC" />
+                                <Text style={styles.agentName}>{agent.name}</Text>
+                                <Text style={styles.agentRole}>({agent.role})</Text>
+                              </View>
+                              <Text style={styles.agentThoughtText}>{agent.thought}</Text>
                             </View>
-                            <Text style={styles.agentThoughtText}>{agent.thought}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </TouchableOpacity>
 
-                  {/* Right Column: Timeline line and node */}
-                  <View style={styles.timelineRightCol}>
-                    <View
-                      style={[
-                        styles.timelineLine,
-                        index === 0 && styles.timelineLineFirst,
-                        index === MOCK_HISTORY.length - 1 && styles.timelineLineLast,
-                      ]}
-                    />
-                    <View style={styles.timelineNode}>
-                      <View style={styles.timelineNodeInner} />
+                    {/* Right Column: Timeline line and node */}
+                    <View style={styles.timelineRightCol}>
+                      <View
+                        style={[
+                          styles.timelineLine,
+                          index === 0 && styles.timelineLineFirst,
+                          index === displayedHistory.length - 1 && styles.timelineLineLast,
+                        ]}
+                      />
+                      <View style={styles.timelineNode}>
+                        <View style={styles.timelineNodeInner} />
+                      </View>
+                      <Text style={styles.timelineDateBadge}>{item.shortDate}</Text>
                     </View>
-                    <Text style={styles.timelineDateBadge}>{item.shortDate}</Text>
                   </View>
-                </View>
-              );
-            })}
+                );
+              });
+            })()}
           </ScrollView>
 
           {/* Action Button at the Bottom */}
@@ -1021,6 +1120,7 @@ export default function ChatScreen() {
               onPress={() => {
                 Keyboard.dismiss();
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                fetchHistorySummaries();
                 setShowHistory(true);
               }}
               style={styles.historyButton}
@@ -1616,5 +1716,61 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  savedDataCard: {
+    marginTop: 8,
+    backgroundColor: '#E8F5E9',
+    borderLeftWidth: 4,
+    borderLeftColor: '#27AE60',
+    padding: 8,
+    borderRadius: 8,
+    width: '100%',
+  },
+  savedTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#27AE60',
+    marginBottom: 4,
+  },
+  savedMessage: {
+    fontSize: 11,
+    color: '#475569',
+    marginBottom: 6,
+  },
+  detailsContainer: {
+    marginTop: 4,
+  },
+  detailItem: {
+    marginBottom: 4,
+  },
+  detailLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 11,
+    color: '#475569',
+    marginLeft: 6,
+  },
+  scoreBar: {
+    marginTop: 6,
+  },
+  scoreText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  track: {
+    height: 4,
+    backgroundColor: '#CBD5E1',
+    borderRadius: 2,
+    width: '100%',
+  },
+  scoreIndicator: {
+    height: 4,
+    backgroundColor: '#27AE60',
+    borderRadius: 2,
   },
 });

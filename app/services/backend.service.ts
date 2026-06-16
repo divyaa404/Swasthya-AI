@@ -1,5 +1,6 @@
-// app/services/backend.service.ts
-import { API_ENDPOINTS } from '@/config/api';
+import { API_ENDPOINTS, BACKEND_URL } from '@/config/api';
+import { useAuthStore } from '@/store/auth.store';
+import { supabase } from '@/services/supabaseClient';
 
 // Helper to delay response for realistic UI loading states
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -39,15 +40,29 @@ export const backendService = {
         };
     },
 
-    // Chat End Session
     endSession: async (patientId: string, log: any[], existingSummary: string) => {
-        await delay(1500);
-        return {
-            daily_summary: "Overall stable condition. Active monitor shows mild heart rate elevation after climbing stairs, which normalized quickly. Recommended to maintain hydration and consistent medication intake.",
-            urgency: "Normal",
-            key_risks: "None detected",
-            symptoms_today: [] as string[]
-        };
+        try {
+            const response = await fetch(`${BACKEND_URL}/health/daily-summary?patient_id=${patientId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (!response.ok) throw new Error("Daily summary request failed");
+            const result = await response.json();
+            return {
+                daily_summary: result.summary || "Summary generated successfully.",
+                urgency: "Normal",
+                key_risks: "None detected",
+                symptoms_today: (result.symptoms_reported || []) as string[]
+            };
+        } catch (e) {
+            console.error("endSession API error:", e);
+            return {
+                daily_summary: "Summary could not be synchronized with server.",
+                urgency: "Normal",
+                key_risks: "None detected",
+                symptoms_today: []
+            };
+        }
     },
 
     // Risk Scoring
@@ -140,29 +155,36 @@ export const backendService = {
 
     // Main Chat
     sendMessage: async (patientId: string, message: string, context: any) => {
-        await delay(1000);
-        let bot_reply = "I'm your AI health assistant. Everything is running in offline demo mode. Let me know how I can assist you with your medications, health tracking, or symptoms!";
-        
-        const lowerMsg = message.toLowerCase();
-        if (lowerMsg.includes('heart') || lowerMsg.includes('bp') || lowerMsg.includes('pulse')) {
-            bot_reply = "Your heart rate and blood pressure trends appear stable based on latest entries. If you notice any sudden chest pain, shortness of breath, or dizziness, please consult a physician immediately.";
-        } else if (lowerMsg.includes('med') || lowerMsg.includes('pill') || lowerMsg.includes('drug') || lowerMsg.includes('alternative')) {
-            bot_reply = "Remember to take your medications on schedule. You can check for generic alternatives at local Jan Aushadhi Kendras to save up to 80% on brand prescriptions.";
-        } else if (lowerMsg.includes('risk') || lowerMsg.includes('score')) {
-            bot_reply = "Your health risk profile is classified as Moderate risk. To improve your score, focus on regular cardiovascular workouts, diet tracking, and consistent sleep cycles.";
+        try {
+            const response = await fetch(`${BACKEND_URL}/health/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ patient_id: patientId, message })
+            });
+            if (!response.ok) throw new Error("Chat message request failed");
+            const res = await response.json();
+            
+            return {
+                bot_reply: res.ai_reply,
+                medical_event: res.saving,
+                save_status: res.saving ? {
+                    action: "Saved to health graph",
+                    symptoms_created: res.saved_data?.symptoms || [],
+                    symptoms_updated: [],
+                    symptoms_resolved: [],
+                    message: `Saved to Neo4j graph (Score: ${res.importance_score}/10)`
+                } : null
+            };
+        } catch (e) {
+            console.error("sendMessage API error:", e);
+            return {
+                bot_reply: "I am having trouble communicating with the backend. Please check connection.",
+                medical_event: false,
+                save_status: null
+            };
         }
-        
-        return {
-            bot_reply,
-            extracted_symptom: null,
-            clarification_needed: false,
-            save_ready: false,
-            confirmation_required: false,
-            session_updated: false
-        };
     },
 
-    // Medical Report Extraction
     extractReport: async (fileUri: string, fileName: string, fileType: string) => {
         await delay(2000);
         return {
@@ -174,5 +196,45 @@ export const backendService = {
                 recommendations: "Continue a balanced diet. Repeat lipid profile in 6 months."
             }
         };
+    },
+
+    getSymptoms: async () => {
+        try {
+            const patientId = useAuthStore.getState().patientId || 'demo-patient';
+            const { data, error } = await supabase
+                .from('symptom_tracker')
+                .select('*')
+                .eq('user_id', patientId)
+                .order('last_reported_at', { ascending: false });
+            if (error) throw error;
+            return (data || []).map(item => ({
+                id: item.id,
+                symptom_name: item.symptom_name,
+                first_reported_at: item.first_reported_at,
+                last_reported_at: item.last_reported_at,
+                duration_days: item.reported_duration_days || 0,
+                status: item.status,
+                severity: item.current_severity || 5
+            }));
+        } catch (e) {
+            console.error("getSymptoms error:", e);
+            return [];
+        }
+    },
+
+    getSummaries: async () => {
+        try {
+            const patientId = useAuthStore.getState().patientId || 'demo-patient';
+            const { data, error } = await supabase
+                .from('daily_health_summaries')
+                .select('*')
+                .eq('patient_id', patientId)
+                .order('summary_date', { ascending: false });
+            if (error) throw error;
+            return data || [];
+        } catch (e) {
+            console.error("getSummaries error:", e);
+            return [];
+        }
     }
 };
