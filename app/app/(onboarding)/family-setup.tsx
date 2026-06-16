@@ -15,6 +15,7 @@ import {
     joinFamilyForPatient,
     type PatientRecord
 } from '@/services/auth.service';
+import { supabase } from '@/config/supabase';
 import {
     ActivityIndicator,
     Alert,
@@ -50,7 +51,7 @@ export default function FamilySetupScreen() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/(onboarding)/user-details');
+      router.replace('/(auth)/welcome' as any);
     }
   };
 
@@ -74,7 +75,40 @@ export default function FamilySetupScreen() {
       }
     }
 
-    // If we reach here, create a temporary patient object from available data
+    // If patient record doesn't exist in DB, create/upsert it to avoid foreign key errors in family association
+    if (patientId) {
+      console.log('Patient record missing in DB. Auto-creating basic profile row...');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const email = session?.user?.email || null;
+        const fullName = session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || 'User';
+
+        const { error: insertError } = await supabase.from('patients').upsert({
+          id: patientId,
+          full_name: fullName,
+          created_at: new Date().toISOString(),
+        });
+
+        if (insertError) {
+          console.error('Error inserting patient row:', insertError);
+        }
+
+        return {
+          id: patientId,
+          name: fullName,
+          email: email,
+          age: null,
+          gender: null,
+          phone: phoneNumber || null,
+          family_id: null,
+          created_at: new Date().toISOString(),
+        };
+      } catch (err) {
+        console.error('Failed to auto-create patient record:', err);
+      }
+    }
+
+    // If we reach here and have a phone number, create a temporary patient object
     if (phoneNumber) {
       console.log('Creating temporary patient from phone:', phoneNumber);
       return {
@@ -590,15 +624,16 @@ export default function FamilySetupScreen() {
             <View style={{ width: 40 }} />
           </View>
           
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            onBarcodeScanned={handleBarCodeScanned}
-            barcodeScannerSettings={{
-              barcodeTypes: ['qr'],
-            }}
-          >
-            <View style={styles.scanOverlay}>
+          <View style={styles.camera}>
+            <CameraView
+              style={StyleSheet.absoluteFill}
+              facing="back"
+              onBarcodeScanned={handleBarCodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+            />
+            <View style={[StyleSheet.absoluteFill, styles.scanOverlay]}>
               <View style={styles.scanFrame}>
                 <View style={styles.scanCornerTL} />
                 <View style={styles.scanCornerTR} />
@@ -606,7 +641,7 @@ export default function FamilySetupScreen() {
                 <View style={styles.scanCornerBR} />
               </View>
             </View>
-          </CameraView>
+          </View>
           
           <Text style={styles.scanInstruction}>
             Position the QR code inside the frame

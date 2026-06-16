@@ -10,9 +10,9 @@ export default function Index() {
     return <Loader text="Hydrating session..." />;
   }
 
-  if (!isLoggedIn) return <Redirect href="/(auth)/login" />;
-  if (!hasProfile) return <Redirect href="/(onboarding)/user-details" />;
+  if (!isLoggedIn) return <Redirect href="/(auth)/welcome" />;
   if (!hasFamilyGroup) return <Redirect href="/(onboarding)/family-setup" />;
+  if (!hasProfile) return <Redirect href="/(onboarding)/chat" />;
   return <Redirect href="/(tabs)/home" />;
 }
 

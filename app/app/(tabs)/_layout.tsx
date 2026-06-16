@@ -66,11 +66,12 @@ export default function TabLayout() {
     if (currentRoute === 'checkin') return 1;
     if (currentRoute === 'meds') return 2;
     if (currentRoute === 'profile') return 3;
+    if (currentRoute === 'chatbot') return 4;
     return 0;
   };
 
   const handleFabPress = () => {
-    router.push('/(onboarding)/chat');
+    router.push('/(tabs)/chatbot' as any);
   };
 
   const handleTabPress = (route: string, index: number) => {
@@ -236,8 +237,15 @@ export default function TabLayout() {
           onPress={handleFabPress}
           style={styles.fabOuter}
         >
-          <View style={styles.fabButton}>
-            <Ionicons name="chatbubble-ellipses" size={30} color={PRIMARY_COLOR} />
+          <View style={[
+            styles.fabButton,
+            activeTab === 4 && { backgroundColor: PRIMARY_COLOR }
+          ]}>
+            <Ionicons 
+              name="chatbubble-ellipses" 
+              size={30} 
+              color={activeTab === 4 ? '#FFFFFF' : PRIMARY_COLOR} 
+            />
           </View>
         </TouchableOpacity>
       </View>

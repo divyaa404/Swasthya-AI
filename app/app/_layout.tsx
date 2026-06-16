@@ -65,12 +65,17 @@ export default function RootLayout() {
           setIsDeepLinkLoading(true);
           try {
             const { supabase } = require('@/config/supabase');
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-              access_token: finalAccessToken,
-              refresh_token: finalRefreshToken,
-            });
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            let sessionData = { user: currentSession?.user };
 
-            if (sessionError) throw sessionError;
+            if (!sessionData.user) {
+              const { data, error: sessionError } = await supabase.auth.setSession({
+                access_token: finalAccessToken,
+                refresh_token: finalRefreshToken,
+              });
+              if (sessionError) throw sessionError;
+              sessionData = data;
+            }
 
             if (sessionData.user) {
               const { getPatientById, generateDummyPhoneFromId } = require('@/services/auth.service');
@@ -81,11 +86,12 @@ export default function RootLayout() {
                 const { error: insertError } = await supabase.from('patients').upsert({
                   id: sessionData.user.id,
                   full_name: fullName,
-                  email: sessionData.user.email,
                   phone_number: generateDummyPhoneFromId(sessionData.user.id),
                   created_at: new Date().toISOString(),
                 }, { onConflict: 'id' });
-                if (!insertError) {
+                if (insertError) {
+                  console.error('[Auth Callback] Upsert patient error:', insertError);
+                } else {
                   dbPatient = await getPatientById(sessionData.user.id);
                 }
               }
@@ -179,7 +185,6 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(onboarding)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="auth/callback" />
       </Stack>
       <StatusBar style="light" />
     </>

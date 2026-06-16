@@ -1,14 +1,23 @@
 // app/(onboarding)/summary.tsx
-import React from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, SafeAreaView, StatusBar, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, TYPOGRAPHY } from '@/theme';
+import { useAuthStore } from '@/store/auth.store';
+import { getPatientById, getFamilyByPatientId, savePatientProfile } from '@/services/auth.service';
 
 export default function SummaryScreen() {
   const params = useLocalSearchParams<{ profileData?: string }>();
+  const { patientId, phoneNumber, setSessionState } = useAuthStore();
   
+  const [userName, setUserName] = useState('Rahul Kumar');
+  const [userEmail, setUserEmail] = useState('user@example.com');
+  const [familyDetails, setFamilyDetails] = useState<{ name: string; code: string } | null>(null);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   let profile = {
     full_name: 'Rahul Kumar',
     age: 24,
@@ -23,6 +32,8 @@ export default function SummaryScreen() {
     smoking: 'Non-smoker',
     alcohol: 'Never',
     emergency_contact: 'None',
+    surgeries: 'None',
+    vaccinations: 'Up to date',
   };
 
   if (params.profileData) {
@@ -33,36 +44,120 @@ export default function SummaryScreen() {
     }
   }
 
-  const handleLaunch = () => {
-    router.replace('/(tabs)/home');
+  useEffect(() => {
+    const loadProfileData = async () => {
+      if (!patientId) {
+        setIsLoadingData(false);
+        return;
+      }
+      try {
+        const patient = await getPatientById(patientId);
+        if (patient) {
+          setUserName(patient.name);
+          if (patient.email) setUserEmail(patient.email);
+        }
+        
+        const family = await getFamilyByPatientId(patientId);
+        if (family) {
+          setFamilyDetails({
+            name: family.family_name || 'My Family Group',
+            code: family.join_code || '',
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to load profile details in summary', err);
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    loadProfileData();
+  }, [patientId]);
+
+  const handleLaunch = async () => {
+    setIsSaving(true);
+    try {
+      // Update patient profile in Supabase
+      await savePatientProfile({
+        patientId: patientId,
+        name: userName || profile.full_name,
+        age: parseInt(String(profile.age), 10) || 24,
+        gender: profile.gender || 'Male',
+        phone: phoneNumber,
+      });
+
+      // Update store state so index.tsx routes to dashboard
+      setSessionState({
+        hasProfile: true,
+      });
+
+      // Navigate to tabs home
+      router.replace('/(tabs)/home');
+    } catch (err: any) {
+      console.error('Error launching app from summary', err);
+      Alert.alert('Configuration Error', err.message || 'Failed to save health baseline. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (isLoadingData) {
+    return (
+      <SafeAreaView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#0474FC" />
+        <Text style={[styles.successDesc, { marginTop: 12 }]}>Syncing health record...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#07111f" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile Configuration Ready</Text>
+        <Text style={styles.headerTitle}>Verify Profile Configuration</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.successCard}>
           <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+            <Ionicons name="shield-checkmark" size={44} color="#10B981" />
           </View>
-          <Text style={styles.successTitle}>Medical Vault Configured</Text>
+          <Text style={styles.successTitle}>Medical Profile Verified</Text>
           <Text style={styles.successDesc}>
-            Your health baseline is now securely encrypted on our clinical servers.
+            Your health baseline is now ready to be securely synchronized with your clinical record.
           </Text>
         </View>
 
+        {/* Personal & Family Information */}
         <View style={styles.summarySection}>
-          <Text style={styles.sectionTitle}>Baseline Metrics</Text>
-          
+          <Text style={styles.sectionTitle}>Account Details</Text>
           <View style={styles.grid}>
             <View style={styles.gridItem}>
               <Text style={styles.label}>Patient Name</Text>
-              <Text style={styles.val}>{profile.full_name}</Text>
+              <Text style={styles.val}>{userName}</Text>
             </View>
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Email Address</Text>
+              <Text style={styles.val}>{userEmail}</Text>
+            </View>
+            {phoneNumber && (
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>Phone Number</Text>
+                <Text style={styles.val}>{phoneNumber}</Text>
+              </View>
+            )}
+            {familyDetails && (
+              <View style={styles.gridItem}>
+                <Text style={styles.label}>Family Group</Text>
+                <Text style={styles.val}>{familyDetails.name} (Code: {familyDetails.code})</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Baseline Metrics */}
+        <View style={styles.summarySection}>
+          <Text style={styles.sectionTitle}>Vitals Baseline</Text>
+          <View style={styles.grid}>
             <View style={styles.gridItem}>
               <Text style={styles.label}>Age / Gender</Text>
               <Text style={styles.val}>{profile.age} yrs • {profile.gender}</Text>
@@ -75,24 +170,21 @@ export default function SummaryScreen() {
               <Text style={styles.label}>Blood Group</Text>
               <Text style={styles.val}>{profile.blood_group}</Text>
             </View>
+            <View style={styles.gridItem}>
+              <Text style={styles.label}>Allergies</Text>
+              <Text style={styles.val}>{profile.allergies}</Text>
+            </View>
           </View>
         </View>
 
+        {/* Clinical Background */}
         <View style={styles.summarySection}>
-          <Text style={styles.sectionTitle}>Clinical Background</Text>
+          <Text style={styles.sectionTitle}>Clinical History</Text>
 
           <View style={styles.list}>
             <View style={styles.listItem}>
-              <Ionicons name="warning-outline" size={18} color="#EF4444" />
-              <View>
-                <Text style={styles.listLabel}>Allergies</Text>
-                <Text style={styles.listVal}>{profile.allergies}</Text>
-              </View>
-            </View>
-
-            <View style={styles.listItem}>
               <Ionicons name="medkit-outline" size={18} color="#3B82F6" />
-              <View>
+              <View style={styles.listItemTextContainer}>
                 <Text style={styles.listLabel}>Active Medications</Text>
                 <Text style={styles.listVal}>{profile.current_medication}</Text>
               </View>
@@ -100,37 +192,48 @@ export default function SummaryScreen() {
 
             <View style={styles.listItem}>
               <Ionicons name="pulse" size={18} color="#8B5CF6" />
-              <View>
-                <Text style={styles.listLabel}>Chronic Diseases</Text>
+              <View style={styles.listItemTextContainer}>
+                <Text style={styles.listLabel}>Chronic Conditions</Text>
                 <Text style={styles.listVal}>{profile.chronic_diseases}</Text>
               </View>
             </View>
 
             <View style={styles.listItem}>
-              <Ionicons name="people-outline" size={18} color="#10B981" />
-              <View>
-                <Text style={styles.listLabel}>Family Medical History</Text>
-                <Text style={styles.listVal}>{profile.family_history}</Text>
+              <Ionicons name="bandage-outline" size={18} color="#EF4444" />
+              <View style={styles.listItemTextContainer}>
+                <Text style={styles.listLabel}>Past Surgeries</Text>
+                <Text style={styles.listVal}>{profile.surgeries}</Text>
               </View>
             </View>
 
             <View style={styles.listItem}>
-              <Ionicons name="call-outline" size={18} color="#F59E0B" />
-              <View>
-                <Text style={styles.listLabel}>Emergency Contact</Text>
-                <Text style={styles.listVal}>{profile.emergency_contact}</Text>
+              <Ionicons name="shield-outline" size={18} color="#10B981" />
+              <View style={styles.listItemTextContainer}>
+                <Text style={styles.listLabel}>Vaccination Status</Text>
+                <Text style={styles.listVal}>{profile.vaccinations}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleLaunch} activeOpacity={0.8}>
+        <TouchableOpacity 
+          style={[styles.button, isSaving && styles.buttonDisabled]} 
+          onPress={handleLaunch} 
+          disabled={isSaving}
+          activeOpacity={0.8}
+        >
           <LinearGradient
             colors={['#0474FC', '#0284C7']}
             style={styles.buttonGradient}
           >
-            <Text style={styles.buttonText}>Launch Swasthya AI</Text>
-            <Ionicons name="rocket-outline" size={20} color={COLORS.white} />
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Launch Swasthya AI</Text>
+                <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
@@ -144,111 +247,118 @@ const styles = StyleSheet.create({
     backgroundColor: '#07111f',
   },
   header: {
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
     alignItems: 'center',
   },
   headerTitle: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fonts.bold,
-    fontSize: TYPOGRAPHY.sizes.md,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 14,
   },
   scrollContent: {
-    padding: SPACING.lg,
+    padding: 16,
     paddingBottom: 40,
-    gap: SPACING.md,
+    gap: 16,
   },
   successCard: {
     backgroundColor: '#1E293B',
     borderRadius: 20,
-    padding: SPACING.lg,
+    padding: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#334155',
   },
   successIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 8,
   },
   successTitle: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fonts.bold,
-    fontSize: TYPOGRAPHY.sizes.xl,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 18,
     marginBottom: 6,
   },
   successDesc: {
-    color: COLORS.gray[400],
-    fontFamily: TYPOGRAPHY.fonts.regular,
-    fontSize: TYPOGRAPHY.sizes.sm,
+    color: '#8AA0BC',
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
   },
   summarySection: {
     backgroundColor: '#0F172A',
     borderRadius: 16,
-    padding: SPACING.md,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
   },
   sectionTitle: {
     color: '#0474FC',
-    fontFamily: TYPOGRAPHY.fonts.bold,
-    fontSize: TYPOGRAPHY.sizes.sm,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: SPACING.md,
+    marginBottom: 12,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: SPACING.md,
+    rowGap: 12,
+    columnGap: 16,
   },
   gridItem: {
     width: '46%',
   },
   label: {
-    color: COLORS.gray[500],
-    fontFamily: TYPOGRAPHY.fonts.medium,
+    color: '#8AA0BC',
+    fontFamily: 'Poppins_500Medium',
     fontSize: 10,
     textTransform: 'uppercase',
   },
   val: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fonts.bold,
-    fontSize: TYPOGRAPHY.sizes.md,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
     marginTop: 2,
   },
   list: {
-    gap: SPACING.md,
+    gap: 12,
   },
   listItem: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
+  listItemTextContainer: {
+    flex: 1,
+  },
   listLabel: {
-    color: COLORS.gray[500],
-    fontFamily: TYPOGRAPHY.fonts.semibold,
-    fontSize: 11,
+    color: '#8AA0BC',
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 10,
     textTransform: 'uppercase',
   },
   listVal: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fonts.medium,
-    fontSize: TYPOGRAPHY.sizes.md,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
     marginTop: 1,
   },
   button: {
     borderRadius: 14,
     overflow: 'hidden',
-    marginTop: SPACING.sm,
+    marginTop: 8,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonGradient: {
     flexDirection: 'row',
@@ -258,8 +368,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   buttonText: {
-    color: COLORS.white,
-    fontFamily: TYPOGRAPHY.fonts.bold,
-    fontSize: TYPOGRAPHY.sizes.lg,
+    color: '#FFFFFF',
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 16,
   },
 });

@@ -61,7 +61,6 @@ export const signUp = async (name: string, email: string, password: string): Pro
       .insert({
         id: data.user.id,
         full_name: name.trim(),
-        email: data.user.email,
         created_at: new Date().toISOString(),
       });
     if (dbError) {
@@ -499,9 +498,9 @@ export const generateDummyPhoneFromId = (id: string): string => {
 export const signInWithGoogle = async (email?: string, name?: string) => {
   try {
     // Let Expo dynamically choose the correct redirectUrl scheme for the current environment.
-    // On Web we use /auth/callback, on mobile we use '/' to prevent Expo Go from crashing with IOException.
+    // On Web we use /callback, on mobile we use '/' to prevent Expo Go from crashing with IOException.
     let redirectUrl = Platform.OS === 'web' 
-      ? Linking.createURL('/auth/callback') 
+      ? Linking.createURL('/callback') 
       : Linking.createURL('/');
     
     // If running on mobile, replace localhost/127.0.0.1 with the actual host IP to avoid pointing to the phone itself.
@@ -580,7 +579,6 @@ export const signInWithGoogle = async (email?: string, name?: string) => {
             await supabase.from('patients').upsert({
               id: sessionData.user.id,
               full_name: fullName,
-              email: sessionData.user.email,
               phone_number: generateDummyPhoneFromId(sessionData.user.id),
               created_at: new Date().toISOString(),
             }, { onConflict: 'id' });

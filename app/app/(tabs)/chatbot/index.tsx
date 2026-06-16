@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FlatList, ScrollView, StyleSheet, Text, View, KeyboardAvoidingView, Platform, Keyboard, Alert } from 'react-native';
 import { ScreenWrapper } from '@/components/shared/ScreenWrapper';
-import { ChatBubble } from '@/components/chat/ChatBubble';
-import { ChatInput } from '@/components/chat/ChatInput';
+import { ChatBubble } from '@/components/chatbot/ChatBubble';
+import { ChatInput } from '@/components/chatbot/ChatInput';
 import { COLORS, SPACING, TYPOGRAPHY } from '@/theme';
 import { TouchableOpacity } from 'react-native';
 

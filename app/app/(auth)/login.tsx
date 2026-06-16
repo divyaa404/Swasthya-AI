@@ -278,6 +278,7 @@ export default function LoginScreen() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleSignIn = async () => {
+    if (loading) return;
     if (!validateSignIn()) return;
     setLoading(true);
     try {
@@ -304,6 +305,7 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = async () => {
+    if (loading) return;
     if (!validateSignUp()) return;
     setLoading(true);
     try {
@@ -326,6 +328,7 @@ export default function LoginScreen() {
   };
 
   const handleGoogle = async () => {
+    if (loading) return;
     setLoading(true);
     try {
       const result = await signInWithGoogle();
