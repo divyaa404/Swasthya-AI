@@ -3,16 +3,17 @@ import { createContext, useState, ReactNode } from 'react';
 
 interface User {
   id: string;
-  email: string;
+  phoneNumber: string;
   name: string;
   role: 'doctor' | 'admin';
+  email?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (emailOrMobile: string, password: string) => Promise<void>;
+  login: (phoneNumber: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -24,15 +25,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return storedUser ? JSON.parse(storedUser) : null;
   });
 
-  const login = async (emailOrMobile: string, password: string) => {
+  const login = async (phoneNumber: string, password: string) => {
     return new Promise<void>((resolve, reject) => {
       setTimeout(() => {
-        if (emailOrMobile && password.length >= 6) {
+        // Validate phone number (10 digits) and password (min 6 chars)
+        if (phoneNumber.length === 10 && password.length >= 6) {
           const mockUser: User = {
             id: '1',
-            email: emailOrMobile.includes('@') ? emailOrMobile : `${emailOrMobile}@example.com`,
-            name: emailOrMobile.includes('admin') ? 'Admin User' : 'Dr. John Doe',
-            role: emailOrMobile.includes('admin') ? 'admin' : 'doctor',
+            phoneNumber: phoneNumber,
+            name: 'Dr. John Doe',
+            role: 'doctor',
+            email: `${phoneNumber}@swasthya.com`,
           };
           setUser(mockUser);
           localStorage.setItem('user', JSON.stringify(mockUser));
