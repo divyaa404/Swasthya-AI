@@ -101,13 +101,13 @@ const MOCK_HISTORY: HistoryItem[] = [
 
 const VOICE_LOCALES = {
   'hi-IN': {
-    greeting: "αñ¿αñ«αñ╕αÑìαññαÑç! αñ«αÑêαñé αñåαñ¬αñòαñ╛ αñ╕αÑìαñ╡αñ╛αñ╕αÑìαñÑαÑìαñ» αñ╡αÑëαñçαñ╕ αñàαñ╕αñ┐αñ╕αÑìαñƒαÑçαñéαñƒ αñ╣αÑéαñüαÑñ αñåαñ£ αñåαñ¬ αñòαÑêαñ╕αñ╛ αñ«αñ╣αñ╕αÑéαñ╕ αñòαñ░ αñ░αñ╣αÑç αñ╣αÑêαñé?",
-    listening: "αñ╕αÑüαñ¿ αñ░αñ╣αñ╛ αñ╣αÑéαñü... αñ¼αÑïαñ▓αñ┐αñÅ!",
-    thinking: "αñ╕αÑïαñÜ αñ░αñ╣αñ╛ αñ╣αÑéαñü...",
-    speaking: "αñ¼αÑïαñ▓ αñ░αñ╣αñ╛ αñ╣αÑéαñü...",
-    unheard: "αñ«αÑêαñéαñ¿αÑç αñòαÑüαñ¢ αñ¿αñ╣αÑÇαñé αñ╕αÑüαñ¿αñ╛αÑñ αñòαÑâαñ¬αñ»αñ╛ αñ½αñ┐αñ░ αñ╕αÑç αñ¼αÑïαñ▓αÑçαñé...",
-    instruction: "αñ¼αÑïαñ▓αñ¿αñ╛ αñ¼αñéαñª αñòαñ░αÑçαñé αñ»αñ╛ αñ╕αñ¼αñ«αñ┐αñƒ αñòαñ░αñ¿αÑç αñòαÑç αñ▓αñ┐αñÅ αñòαÑçαñéαñªαÑìαñ░ αñ¬αñ░ αñƒαÑêαñ¬ αñòαñ░αÑçαñé",
-    statusListening: "αñ╕αÑüαñ¿ αñ░αñ╣αñ╛ αñ╣αÑéαñü...",
+    greeting: "नमस्ते! मैं आपका स्वास्थ्य वॉइस असिस्टेंट हूँ। आज आप कैसा महसूस कर रहे हैं?",
+    listening: "सुन रहा हूँ... बोलिए!",
+    thinking: "सोच रहा हूँ...",
+    speaking: "बोल रहा हूँ...",
+    unheard: "मैंने कुछ नहीं सुना। कृपया फिर से बोलें...",
+    instruction: "बोलना बंद करें या सबमिट करने के लिए केंद्र पर टैप करें",
+    statusListening: "सुन रहा हूँ...",
   },
   'en-US': {
     greeting: "Hello! I am your health voice assistant. How are you feeling today?",
@@ -148,9 +148,9 @@ export default function ChatScreen() {
   const phraseIndexRef = useRef(0);
 
   const mockPhrases = [
-    "αñ«αÑüαñ¥αÑç αñòαñ▓ αñ░αñ╛αññ αñ╕αÑç αñ╕αñ┐αñ░αñªαñ░αÑìαñª αñ╣αÑï αñ░αñ╣αñ╛ αñ╣αÑê",
+    "मुझे कल रात से सिरदर्द हो रहा है",
     "My chest feels a bit tight and uneasy",
-    "αñòαÑìαñ»αñ╛ αñ«αÑüαñ¥αÑç αñàαñ¬αñ¿αÑÇ αñ╕αÑüαñ¼αñ╣ αñòαÑÇ αñªαñ╡αñ╛ αñ▓αÑçαñ¿αÑÇ αñÜαñ╛αñ╣αñ┐αñÅ?"
+    "क्या मुझे अपनी सुबह की दवा लेनी चाहिए?"
   ];
 
   // Pulse animation when recording
@@ -199,7 +199,7 @@ export default function ChatScreen() {
       let voiceStarted = false;
       if (isVoiceAvailable) {
         try {
-          await Voice.start('hi-IN'); // start recording using microphone in Hindi
+          await Voice.start('hi-IN');
           voiceStarted = true;
         } catch (e) {
           console.error("Voice start error:", e);
@@ -207,7 +207,6 @@ export default function ChatScreen() {
       }
 
       if (!voiceStarted) {
-        // Fallback: If voice fails (permissions, emulator, missing native module), run the mock simulation!
         if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
         recordingTimerRef.current = setTimeout(() => {
           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -230,9 +229,9 @@ export default function ChatScreen() {
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [voiceState, setVoiceState] = useState<'listening' | 'thinking' | 'speaking' | 'paused'>('listening');
   const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-US'>('hi-IN');
-  const [voiceSubtitles, setVoiceSubtitles] = useState('αñ╢αÑüαñ░αÑé αñ╣αÑï αñ░αñ╣αñ╛ αñ╣αÑê...');
+  const [voiceSubtitles, setVoiceSubtitles] = useState('शुरू हो रहा है...');
 
-  // Concentric circle animations for the ChatGPT-like blob
+  // Concentric circle animations
   const blobScale1 = useRef(new Animated.Value(1)).current;
   const blobScale2 = useRef(new Animated.Value(1)).current;
   const blobScale3 = useRef(new Animated.Value(1)).current;
@@ -243,7 +242,7 @@ export default function ChatScreen() {
   const voiceInteractionTimer = useRef<any>(null);
   const latestVoiceSpeechRef = useRef('');
 
-  // Register real speech-to-text listeners (Hindi default)
+  // Register real speech-to-text listeners
   useEffect(() => {
     if (!isVoiceAvailable) return;
 
@@ -300,7 +299,7 @@ export default function ChatScreen() {
     };
   }, [voiceModeActive, voiceState, voiceLang, isVoiceAvailable]);
 
-  // Concentric circle animation loops based on voiceState
+  // Concentric circle animation loops
   useEffect(() => {
     let animations: Animated.CompositeAnimation[] = [];
 
@@ -446,9 +445,9 @@ export default function ChatScreen() {
 
     if (!voiceStarted) {
       const simulatedUserSayings = voiceLang === 'hi-IN' ? [
-        "αñ«αÑüαñ¥αÑç αñòαñ▓ αñ░αñ╛αññ αñ╕αÑç αñ¬αÑçαñƒ αñ«αÑçαñé αñªαñ░αÑìαñª αñöαñ░ αñ¼αÑçαñÜαÑêαñ¿αÑÇ αñ╣αÑï αñ░αñ╣αÑÇ αñ╣αÑê",
-        "αñ«αÑçαñ░αÑÇ αñ¢αñ╛αññαÑÇ αñ«αÑçαñé αñÑαÑïαñíαñ╝αñ╛ αñûαñ┐αñéαñÜαñ╛αñ╡ αñöαñ░ αñÿαñ¼αñ░αñ╛αñ╣αñƒ αñ«αñ╣αñ╕αÑéαñ╕ αñ╣αÑï αñ░αñ╣αÑÇ αñ╣αÑê",
-        "αñòαÑìαñ»αñ╛ αñ«αÑüαñ¥αÑç αñàαñ¬αñ¿αÑÇ αñ╕αÑüαñ¼αñ╣ αñòαÑÇ αñªαñ╡αñ╛ αñ▓αÑçαñ¿αÑÇ αñÜαñ╛αñ╣αñ┐αñÅ?"
+        "मुझे कल रात से पेट में दर्द और बेचैनी हो रही है",
+        "मेरी छाती में थोड़ा खिंचाव और घबराहट महसूस हो रही है",
+        "क्या मुझे अपनी सुबह की दवा लेनी चाहिए?"
       ] : [
         "I have stomach pain and discomfort since last night",
         "My chest feels a bit tight and uneasy",
@@ -465,22 +464,22 @@ export default function ChatScreen() {
 
   const getFallbackReplyHindi = (input: string): string => {
     const msg = input.toLowerCase();
-    if (msg.includes('blood pressure') || msg.includes('bp') || msg.includes('αñ░αñòαÑìαññαñÜαñ╛αñ¬') || msg.includes('αñ¼αÑÇαñ¬αÑÇ')) {
-      return 'αñåαñ¬αñòαñ╛ αñ░αñòαÑìαññαñÜαñ╛αñ¬ αñáαÑÇαñò αñ▓αñù αñ░αñ╣αñ╛ αñ╣αÑêαÑñ αñàαñ¬αñ¿αÑÇ αñªαñ╡αñ╛αñÅαñé αñ¿αñ┐αñ»αñ«αñ┐αññ αñ░αÑéαñ¬ αñ╕αÑç αñ▓αÑçαññαÑç αñ░αñ╣αÑçαñé αñöαñ░ αñ╕αñ«αñ»-αñ╕αñ«αñ» αñ¬αñ░ αñ£αñ╛αñéαñÜ αñòαñ░αññαÑç αñ░αñ╣αÑçαñéαÑñ';
+    if (msg.includes('blood pressure') || msg.includes('bp') || msg.includes('रक्तचाप') || msg.includes('बीपी')) {
+      return 'आपका रक्तचाप ठीक लग रहा है। अपनी दवाएं नियमित रूप से लेते रहें और समय-समय पर जांच करते रहें।';
     }
-    if (msg.includes('headache') || msg.includes('head') || msg.includes('αñ╕αñ┐αñ░αñªαñ░αÑìαñª') || msg.includes('αñ╕αñ┐αñ░ αñªαñ░αÑìαñª')) {
-      return 'αñ╕αñ┐αñ░αñªαñ░αÑìαñª αñ░αñòαÑìαññαñÜαñ╛αñ¬ αñ«αÑçαñé αñëαññαñ╛αñ░-αñÜαñóαñ╝αñ╛αñ╡ αñ»αñ╛ αñ¿αñ┐αñ░αÑìαñ£αñ▓αÑÇαñòαñ░αñú αñ╕αÑç αñ£αÑüαñíαñ╝αñ╛ αñ╣αÑï αñ╕αñòαññαñ╛ αñ╣αÑêαÑñ αñ«αÑêαñéαñ¿αÑç αñçαñ╕ αñ▓αñòαÑìαñ╖αñú αñòαÑï αñ¿αÑïαñƒ αñòαñ░ αñ▓αñ┐αñ»αñ╛ αñ╣αÑêαÑñ αñåαñ¬ αñòαñ¼ αñ╕αÑç αñÉαñ╕αñ╛ αñ«αñ╣αñ╕αÑéαñ╕ αñòαñ░ αñ░αñ╣αÑç αñ╣αÑêαñé?';
+    if (msg.includes('headache') || msg.includes('head') || msg.includes('सिरदर्द') || msg.includes('सिर दर्द')) {
+      return 'सिरदर्द रक्तचाप में उतार-चढ़ाव या निर्जलीकरण से जुड़ा हो सकता है। मैंने इस लक्षण को नोट कर लिया है। आप कब से ऐसा महसूस कर रहे हैं?';
     }
-    if (msg.includes('tired') || msg.includes('fatigue') || msg.includes('αñÑαñòαñ╛αñ¿') || msg.includes('αñòαñ«αñ£αÑïαñ░αÑÇ')) {
-      return 'αñÑαñòαñ╛αñ¿ αñ«αñºαÑüαñ«αÑçαñ╣ αñ»αñ╛ αñ¿αÑÇαñéαñª αñòαÑÇ αñòαñ«αÑÇ αñòαÑç αñòαñ╛αñ░αñú αñ╣αÑï αñ╕αñòαññαÑÇ αñ╣αÑêαÑñ αñòαÑìαñ»αñ╛ αñåαñ¬ 7-8 αñÿαñéαñƒαÑç αñ╕αÑï αñ░αñ╣αÑç αñ╣αÑêαñé?';
+    if (msg.includes('tired') || msg.includes('fatigue') || msg.includes('थकान') || msg.includes('कमजोरी')) {
+      return 'थकान मधुमेह या नींद की कमी के कारण हो सकती है। क्या आप 7-8 घंटे सो रहे हैं?';
     }
-    if (msg.includes('medic') || msg.includes('tablet') || msg.includes('αñªαñ╡αñ╛') || msg.includes('αñùαÑïαñ▓αÑÇ')) {
-      return 'αñ»αñ╛αñª αñ░αñûαÑçαñé αñòαñ┐ αñíαÑëαñòαÑìαñƒαñ░ αñòαÑç αñ¬αñ░αÑìαñÜαÑç αñòαÑç αñàαñ¿αÑüαñ╕αñ╛αñ░ αñªαñ╡αñ╛αñÅαñé αñ╕αñ«αñ» αñ¬αñ░ αñ▓αÑçαñéαÑñ αñòαÑìαñ»αñ╛ αñåαñ¬αñ¿αÑç αñåαñ£ αñòαÑÇ αñûαÑüαñ░αñ╛αñò αñ▓αÑç αñ▓αÑÇ αñ╣αÑê?';
+    if (msg.includes('medic') || msg.includes('tablet') || msg.includes('दवा') || msg.includes('गोली')) {
+      return 'याद रखें कि डॉक्टर के परामर्श के अनुसार दवाएं समय पर लें। क्या आपने आज की खुराक ले ली है?';
     }
-    if (msg.includes('αñªαñ░αÑìαñª') || msg.includes('pain') || msg.includes('αññαñòαñ▓αÑÇαñ½')) {
-      return 'αñ«αÑüαñ¥αÑç αñ»αñ╣ αñ╕αÑüαñ¿αñòαñ░ αñûαÑçαñª αñ╣αÑêαÑñ αñªαñ░αÑìαñª αñòαñ╣αñ╛αñü αñ╣αÑï αñ░αñ╣αñ╛ αñ╣αÑê αñöαñ░ αñ»αñ╣ αñòαñ┐αññαñ¿αñ╛ αñùαñéαñ¡αÑÇαñ░ αñ╣αÑê (1 αñ╕αÑç 10 αñòαÑç αñ¬αÑêαñ«αñ╛αñ¿αÑç αñ¬αñ░)?';
+    if (msg.includes('दर्द') || msg.includes('pain') || msg.includes('तकलीफ')) {
+      return 'मुझे यह सुनकर खेद है। दर्द कहां हो रहा है और यह कितना गंभीर है (1 से 10 के पैमाने पर)?';
     }
-    return 'αñ╕αñ╛αñ¥αñ╛ αñòαñ░αñ¿αÑç αñòαÑç αñ▓αñ┐αñÅ αñºαñ¿αÑìαñ»αñ╡αñ╛αñªαÑñ αñ«αÑêαñé αñçαñ╕ αñ£αñ╛αñ¿αñòαñ╛αñ░αÑÇ αñòαÑï αñåαñ¬αñòαÑç αñªαÑêαñ¿αñ┐αñò αñ╕αÑìαñ╡αñ╛αñ╕αÑìαñÑαÑìαñ» αñ¬αÑìαñ░αÑïαñ½αñ╝αñ╛αñçαñ▓ αñ«αÑçαñé αñªαñ░αÑìαñ£ αñòαñ░ αñ░αñ╣αñ╛ αñ╣αÑéαñüαÑñ αñòαÑìαñ»αñ╛ αñòαÑïαñê αñàαñ¿αÑìαñ» αñ▓αñòαÑìαñ╖αñú αñ╣αÑêαñé?';
+    return 'साझा करने के लिए धन्यवाद। मैं इस जानकारी को आपके दैनिक स्वास्थ्य प्रोफाइल में दर्ज कर रहा हूं। क्या कोई अन्य लक्षण हैं?';
   };
 
   const processUserVoiceInput = async (spokenText: string) => {
@@ -590,14 +589,12 @@ export default function ChatScreen() {
 
   const flatListRef = useRef<FlatList>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     setTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages]);
 
-  // Handle session end on unmount
   useEffect(() => {
     return () => {
       if (user?.id) {
@@ -613,11 +610,11 @@ export default function ChatScreen() {
 
   const getFallbackReply = (input: string): string => {
     const msg = input.toLowerCase();
-    if (msg.includes('blood pressure') || msg.includes('bp')) return 'Your recent BP readings have been tracking around 118/76 ΓÇö within normal range. Continue your Amlodipine as prescribed and monitor weekly.';
+    if (msg.includes('blood pressure') || msg.includes('bp')) return 'Your recent BP readings have been tracking around 118/76 — within normal range. Continue your Amlodipine as prescribed and monitor weekly.';
     if (msg.includes('headache') || msg.includes('head')) return 'Headaches can be linked to blood pressure fluctuations or dehydration. I\'ve noted this symptom. How long has this been going on?';
     if (msg.includes('tired') || msg.includes('fatigue') || msg.includes('energy')) return 'Fatigue is a common concern with your conditions. Are you sleeping 7-8 hours? Let\'s also check if you\'ve missed any doses recently.';
     if (msg.includes('medic') || msg.includes('tablet') || msg.includes('pill')) return 'You have 3 active medications: Metformin 500mg (morning), Amlodipine 5mg (evening), Vitamin D3 (afternoon). Have you been taking them consistently?';
-    if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) return 'Hello! How are you feeling today? I\'m your AI health assistant ΓÇö tell me about any symptoms, medications, or health concerns.';
+    if (msg.includes('hello') || msg.includes('hi') || msg.includes('hey')) return 'Hello! How are you feeling today? I\'m your AI health assistant — tell me about any symptoms, medications, or health concerns.';
     if (msg.includes('pain') || msg.includes('hurt') || msg.includes('ache')) return 'I understand you\'re experiencing pain. Can you tell me where exactly and rate it from 1-10? This helps me assess the severity.';
     if (msg.includes('sugar') || msg.includes('glucose') || msg.includes('diabet')) return 'Blood sugar management is key with your profile. Have you checked your levels today? Aim for fasting glucose below 126 mg/dL.';
     if (msg.includes('sleep') || msg.includes('insomnia')) return 'Sleep quality directly impacts your heart health and blood pressure. 7-8 hours is recommended. Any difficulty falling asleep or staying asleep?';
@@ -745,7 +742,6 @@ export default function ChatScreen() {
         ]}
       >
         <SafeAreaView style={styles.historySafeArea}>
-          {/* History Header */}
           <View style={styles.historyHeader}>
             <TouchableOpacity
               onPress={() => {
@@ -760,7 +756,6 @@ export default function ChatScreen() {
             <View style={{ width: 40 }} />
           </View>
 
-          {/* History Scrollable Timeline */}
           <ScrollView
             contentContainerStyle={styles.historyContent}
             showsVerticalScrollIndicator={false}
@@ -769,14 +764,13 @@ export default function ChatScreen() {
               const isExpanded = !!expandedDays[item.id];
               return (
                 <View key={item.id} style={styles.timelineRow}>
-                  {/* Left Column: Summary Card */}
                   <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => toggleDayExpand(item.id)}
                     style={[styles.historyCard, isExpanded && styles.historyCardExpanded]}
                   >
                     <View style={styles.cardHeaderRow}>
-                      <Text style={styles.cardDateText}>{item.date} ΓÇó {item.time}</Text>
+                      <Text style={styles.cardDateText}>{item.date} • {item.time}</Text>
                       <View style={styles.cardHeaderRight}>
                         <Ionicons
                           name={isExpanded ? "chevron-up" : "chevron-down"}
@@ -807,7 +801,6 @@ export default function ChatScreen() {
                     )}
                   </TouchableOpacity>
 
-                  {/* Right Column: Timeline line and node */}
                   <View style={styles.timelineRightCol}>
                     <View
                       style={[
@@ -826,7 +819,6 @@ export default function ChatScreen() {
             })}
           </ScrollView>
 
-          {/* Action Button at the Bottom */}
           <View style={styles.historyFooter}>
             <TouchableOpacity
               onPress={handleEndSession}
@@ -847,7 +839,6 @@ export default function ChatScreen() {
     return (
       <LinearGradient colors={['#0B0F19', '#020408']} style={styles.voiceOverlay}>
         <SafeAreaView style={styles.voiceSafeArea}>
-          {/* Header */}
           <View style={styles.voiceOverlayHeader}>
             <TouchableOpacity
               onPress={() => {
@@ -869,12 +860,11 @@ export default function ChatScreen() {
             >
               <Ionicons name="language" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
               <Text style={styles.langToggleText}>
-                {voiceLang === 'hi-IN' ? 'English' : 'αñ╣αñ┐αñéαñªαÑÇ'}
+                {voiceLang === 'hi-IN' ? 'English' : 'हिंदी'}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Central Blob Visualizer */}
           <View style={styles.voiceVisualizerContainer}>
             <View style={styles.blobAnchor}>
               <Animated.View
@@ -919,9 +909,9 @@ export default function ChatScreen() {
                     } else {
                       if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
                       const simulatedUserSayings = voiceLang === 'hi-IN' ? [
-                        "αñ«αÑüαñ¥αÑç αñòαñ▓ αñ░αñ╛αññ αñ╕αÑç αñ¬αÑçαñƒ αñ«αÑçαñé αñªαñ░αÑìαñª αñöαñ░ αñ¼αÑçαñÜαÑêαñ¿αÑÇ αñ╣αÑï αñ░αñ╣αÑÇ αñ╣αÑê",
-                        "αñ«αÑçαñ░αÑÇ αñ¢αñ╛αññαÑÇ αñ«αÑçαñé αñÑαÑïαñíαñ╝αñ╛ αñûαñ┐αñéαñÜαñ╛αñ╡ αñöαñ░ αñÿαñ¼αñ░αñ╛αñ╣αñƒ αñ«αñ╣αñ╕αÑéαñ╕ αñ╣αÑï αñ░αñ╣αÑÇ αñ╣αÑê",
-                        "αñòαÑìαñ»αñ╛ αñ«αÑüαñ¥αÑç αñàαñ¬αñ¿αÑÇ αñ╕αÑüαñ¼αñ╣ αñòαÑÇ αñªαñ╡αñ╛ αñ▓αÑçαñ¿αÑÇ αñÜαñ╛αñ╣αñ┐αñÅ?"
+                        "मुझे कल रात से पेट में दर्द और बेचैनी हो रही है",
+                        "मेरी छाती में थोड़ा खिंचाव और घबराहट महसूस हो रही है",
+                        "क्या मुझे अपनी सुबह की दवा लेनी चाहिए?"
                       ] : [
                         "I have stomach pain and discomfort since last night",
                         "My chest feels a bit tight and uneasy",
@@ -965,7 +955,6 @@ export default function ChatScreen() {
             </Text>
           </View>
 
-          {/* Subtitles Area */}
           <View style={styles.voiceSubtitlesContainer}>
             <ScrollView
               style={styles.subtitlesScroll}
@@ -976,7 +965,6 @@ export default function ChatScreen() {
             </ScrollView>
           </View>
 
-          {/* Subtle instruction at bottom */}
           <View style={{ paddingVertical: 24, alignItems: 'center' }}>
             <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
               {voiceState === 'listening' ? VOICE_LOCALES[voiceLang].instruction : ''}
@@ -1107,7 +1095,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 40,
+    paddingTop: Platform.OS === 'ios' ? 12 : 12,
     paddingBottom: 16,
     backgroundColor: '#171717',
     borderBottomWidth: 1,
@@ -1307,7 +1295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 12 : 40,
+    paddingTop: Platform.OS === 'ios' ? 12 : 12,
     paddingBottom: 16,
   },
   voiceCloseButton: {
@@ -1447,7 +1435,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 40,
+    paddingTop: Platform.OS === 'ios' ? 12 : 12,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2D2D2D',
