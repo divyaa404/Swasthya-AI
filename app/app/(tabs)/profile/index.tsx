@@ -1,5 +1,5 @@
 // app/(tabs)/profile/index.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   SafeAreaView,
   StatusBar,
@@ -28,6 +28,14 @@ const BOTTOM_BAR_HEIGHT = 120;
 export default function ProfileScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'profile' | 'family'>('profile');
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  // Reset scroll position when tab changes
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  }, [activeTab]);
 
   // Profile data for Indresh
   const profile = {
@@ -70,22 +78,34 @@ export default function ProfileScreen() {
     console.log('Family code copied');
   };
 
-  // Risk factors data
-  const riskFactors = [
+  // Risk factors data for Profile
+  const profileRiskFactors = [
     { text: 'Chronic headache history', color: '#F59E0B' },
     { text: 'High stress levels', color: '#F59E0B' },
     { text: 'Regular exercise routine', color: '#10B981' },
   ];
 
-  // AI Insight summary for Indresh
+  // Risk factors data for Family
+  const familyRiskFactors = [
+    { text: 'Family hypertension history', color: '#F59E0B' },
+    { text: 'Shared headache patterns', color: '#F59E0B' },
+    { text: 'Regular family check-ups', color: '#10B981' },
+  ];
+
+  // AI Insight summary for Indresh (Profile)
   const aiSummary = 
     "Swasthya AI has analyzed your health patterns. You show moderate risk factors with headache and anxiety being primary concerns. Regular monitoring and stress management recommended. Your adherence rate is 85% with stable vitals.";
+
+  // AI Insight summary for Family
+  const familyAISummary = 
+    "Swasthya AI has analyzed your family health patterns. Your family shows overall stable health trends with some shared symptoms. Your father has elevated blood pressure risks, while your sister shares similar headache patterns. Regular family health monitoring is recommended. Family adherence rate is 78%.";
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <ScrollView 
+        ref={scrollViewRef}
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -95,7 +115,7 @@ export default function ProfileScreen() {
 
         {/* Profile Tab Content */}
         {activeTab === 'profile' && (
-          <>
+          <View key="profile-content">
             <ProfileTabContent
               profile={profile}
               qrValue={getQRValue()}
@@ -104,12 +124,13 @@ export default function ProfileScreen() {
               getRiskColor={getRiskColor}
             />
 
-            {/* Risk Score Card with Circular Gauge */}
+            {/* Risk Score Card with Circular Gauge - Profile */}
             <RiskScoreCard
+              key="profile-risk"
               score={58}
               riskLevel="Moderate Risk"
               description="Your health risk score is moderate. Regular monitoring and healthy habits are recommended."
-              factors={riskFactors}
+              factors={profileRiskFactors}
             />
 
             {/* Health Stats - 3 Horizontal Cards */}
@@ -121,24 +142,47 @@ export default function ProfileScreen() {
               ]}
             />
 
-            {/* AI Insights Card */}
-            <AIInsightCard summaryText={aiSummary} />
-          </>
+            {/* AI Insights Card - Profile */}
+            <AIInsightCard key="profile-ai" summaryText={aiSummary} />
+          </View>
         )}
 
         {/* Family Tab Content */}
         {activeTab === 'family' && (
-          <FamilyTabContent
-            familyData={{
-              family_name: 'Indresh Family',
-              join_code: '123321cc',
-            }}
-            onCopyFamilyCode={handleCopyFamilyCode}
-            onSetupFamily={() => router.push('/(onboarding)/family-setup')}
-            membersCount={3}
-            familyRiskLevel="Low"
-            getRiskColor={getRiskColor}
-          />
+          <View key="family-content">
+            <FamilyTabContent
+              familyData={{
+                family_name: 'Indresh Family',
+                join_code: '123321cc',
+              }}
+              onCopyFamilyCode={handleCopyFamilyCode}
+              onSetupFamily={() => router.push('/(onboarding)/family-setup')}
+              membersCount={3}
+              familyRiskLevel="Moderate"
+              getRiskColor={getRiskColor}
+            />
+
+            {/* Risk Score Card with Circular Gauge - Family */}
+            <RiskScoreCard
+              key="family-risk"
+              score={45}
+              riskLevel="Moderate Risk"
+              description="Your family health risk score is moderate. Shared symptoms and genetic factors are being monitored."
+              factors={familyRiskFactors}
+            />
+
+            {/* Family Health Stats */}
+            <HealthStatsCard
+              stats={[
+                { icon: 'people-outline', label: 'Members', value: '3', color: '#E0E7FF', iconColor: '#4F46E5' },
+                { icon: 'fitness-outline', label: 'Conditions', value: '4', color: '#FEE2E2', iconColor: '#EF4444' },
+                { icon: 'document-text-outline', label: 'Records', value: '18', color: '#E8F1FE', iconColor: '#0474FC' },
+              ]}
+            />
+
+            {/* AI Insights Card - Family */}
+            <AIInsightCard key="family-ai" summaryText={familyAISummary} />
+          </View>
         )}
 
         {/* Extra bottom padding spacer */}

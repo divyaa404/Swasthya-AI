@@ -1,3 +1,4 @@
+// app/components/profile/FamilyTabContent.tsx
 import React, { useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
