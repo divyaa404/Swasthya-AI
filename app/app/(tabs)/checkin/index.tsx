@@ -18,7 +18,7 @@ const STATIC_QUESTIONS = [
   { id: '5', question_text: 'Have you experienced any stress or anxiety today?', asked_by: 'ai', created_at: '2026-04-10T07:00:00Z', category: 'mental', options: ['None', 'Mild', 'Moderate', 'High'] },
 ];
 
-const TopNavBar = ({ onScanPress, onNotificationPress, onProfilePress, notificationCount = 3, userName = 'Rahul', activeScreen = 'checkin' }: any) => {
+const TopNavBar = ({ onScanPress, onNotificationPress, onProfilePress, notificationCount = 3, userName = 'Indresh', activeScreen = 'checkin' }: any) => {
   const getTitle = () => {
     switch (activeScreen) {
       case 'home': return 'DASHBOARD';
@@ -185,7 +185,7 @@ export default function CheckinScreen() {
         onNotificationPress={() => {}}
         onProfilePress={() => router.push('/(tabs)/profile')}
         notificationCount={3}
-        userName="Rahul"
+        userName="Indresh"
         activeScreen={currentRoute}
       />
 

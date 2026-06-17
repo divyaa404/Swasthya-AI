@@ -30,110 +30,12 @@ import { supabase } from '@/services/supabaseClient';
 import { useAuthStore } from '@/store/auth.store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Top Navigation Bar Component (inline)
-const TopNavBar = ({
-  onScanPress,
-  onNotificationPress,
-  onProfilePress,
-  notificationCount = 3,
-  userName = 'User',
-  activeScreen = 'DASHBOARD'
-}: any) => {
-  // Get the title based on active screen
-  const getTitle = () => {
-    switch (activeScreen) {
-      case 'home': return 'DASHBOARD';
-      case 'checkin': return 'CHECK-IN';
-      case 'meds': return 'MEDICATIONS';
-      case 'profile': return 'PROFILE';
-      default: return 'DASHBOARD';
-    }
-  };
-
-  return (
-    <View style={styles.topNavContainer}>
-      <View style={styles.topNavBar}>
-        {/* Left Section - Scan Button */}
-        <TouchableOpacity activeOpacity={0.8} onPress={onScanPress} style={styles.leftButton}>
-          <LinearGradient
-            colors={['#0474FC', '#0360D0']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.gradientButton}
-          >
-            <Ionicons name="scan-outline" size={22} color="#FFFFFF" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* Center Section - Dynamic Pill */}
-        <View style={styles.centerPill}>
-          <View style={styles.pillContent}>
-            <View style={styles.blueDot} />
-            <Text style={styles.pillText}>{getTitle()}</Text>
-          </View>
-        </View>
-
-        {/* Right Section - Notification & Profile */}
-        <View style={styles.rightSection}>
-          {/* Notification Icon */}
-          <TouchableOpacity activeOpacity={0.8} onPress={onNotificationPress} style={styles.iconButton}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="notifications-outline" size={22} color="#374151" />
-              {notificationCount > 0 && (
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.badgeText}>{notificationCount > 9 ? '9+' : notificationCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          {/* Profile Avatar */}
-          <TouchableOpacity activeOpacity={0.8} onPress={onProfilePress} style={styles.avatarButton}>
-            <LinearGradient
-              colors={['#0474FC', '#0360D0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarGradient}
-            >
-              <Text style={styles.avatarText}>{userName ? userName.charAt(0).toUpperCase() : 'U'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-// AI Chat Button Component
-const AIChatButton = () => {
-  const handlePress = () => {
-    try {
-      // Navigate to AI Chat screen
-      router.push('/(onboarding)/chat');
-    } catch (error) {
-      Alert.alert('Error', 'Unable to open chat. Please try again.');
-      console.error('Navigation error:', error);
-    }
-  };
-
-  return (
-    <View style={styles.aiChatButton}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handlePress}
-      >
-        <LinearGradient
-          colors={['#0474FC', '#0360D0']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.aiChatGradient}
-        >
-          <Ionicons name="chatbubble-ellipses" size={28} color="#FFFFFF" />
-        </LinearGradient>
-      </TouchableOpacity>
-    </View>
-  );
-};
+// Import profile components
+import {
+  RiskScoreCard as ProfileRiskScoreCard,
+  HealthGraphCard,
+  AIInsightCard,
+} from '@/components/profile';
 
 // Extraction Results Modal Component
 const ExtractionResultsModal = ({ visible, data, onClose, loading }: any) => {
@@ -185,10 +87,7 @@ const ExtractionResultsModal = ({ visible, data, onClose, loading }: any) => {
             )}
           </ScrollView>
 
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-          >
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>Done</Text>
           </TouchableOpacity>
         </View>
@@ -244,7 +143,6 @@ const WatchSimulatorCard = ({ isAbnormal, setIsAbnormal }: { isAbnormal: boolean
       setIsAbnormal((prev: boolean) => {
         const next = !prev;
         if (next) {
-          // Abnormal state
           setVitals({
             hr: Math.floor(Math.random() * (140 - 120) + 120),
             spo2: Math.floor(Math.random() * (92 - 85) + 85),
@@ -252,7 +150,6 @@ const WatchSimulatorCard = ({ isAbnormal, setIsAbnormal }: { isAbnormal: boolean
             dia: Math.floor(Math.random() * (100 - 90) + 90),
           });
         } else {
-          // Normal state
           setVitals({
             hr: Math.floor(Math.random() * (85 - 65) + 65),
             spo2: Math.floor(Math.random() * (100 - 96) + 96),
@@ -262,8 +159,7 @@ const WatchSimulatorCard = ({ isAbnormal, setIsAbnormal }: { isAbnormal: boolean
         }
         return next;
       });
-    }, 3500); // toggle every 3.5 seconds
-
+    }, 3500);
     return () => clearInterval(interval);
   }, []);
 
@@ -352,101 +248,6 @@ const FamilySummaryCard = ({ familyData, familyMembers }: { familyData: any; fam
   );
 };
 
-// Risk Score Card Component
-const RiskScoreCard = ({ profile, isAbnormal }: { profile: any; isAbnormal: boolean }) => {
-  const getRiskDetails = () => {
-    if (isAbnormal) {
-      return { score: 92, color: '#EF4444', label: 'Critical' };
-    }
-    const level = profile?.risk_level?.toLowerCase() || 'low';
-    if (level === 'high' || level === 'red') return { score: 85, color: '#EF4444', label: 'High' };
-    if (level === 'elevated' || level === 'orange') return { score: 65, color: '#F97316', label: 'Elevated' };
-    if (level === 'moderate' || level === 'yellow') return { score: 45, color: '#F59E0B', label: 'Medium' };
-    return { score: 15, color: '#10B981', label: 'Low' };
-  };
-
-  const { score, color, label } = getRiskDetails();
-
-  // Simulated trend data
-  const trendData = [
-    Math.min(100, score * 1.2),
-    Math.min(100, score * 0.9),
-    Math.min(100, score * 1.1),
-    Math.min(100, score * 0.8),
-    Math.min(100, score * 1.05),
-    Math.min(100, score * 0.95),
-    score
-  ];
-
-  const screenWidth = Dimensions.get('window').width;
-
-  return (
-    <View style={styles.newCard}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardHeaderLeft}>
-          <View style={[styles.iconBg, { backgroundColor: color + '15' }]}>
-            <Ionicons name="pulse" size={20} color={color} />
-          </View>
-          <Text style={styles.cardTitle}>Health Risk Analysis</Text>
-        </View>
-        <View style={[styles.riskBadge, { backgroundColor: color + '15' }]}>
-          <Text style={[styles.riskBadgeText, { color }]}>{label} Level</Text>
-        </View>
-      </View>
-
-      <View style={styles.riskScoreRow}>
-        <View style={styles.scoreCircleWrapper}>
-          <Text style={[styles.scoreLarge, { color }]}>{score}%</Text>
-          <Text style={styles.scoreLabel}>Current Risk</Text>
-        </View>
-        <View style={styles.scoreTextWrapper}>
-          <Text style={styles.scoreDescTitle}>Analysis Complete</Text>
-          <Text style={styles.scoreDescText}>
-            Based on your medical history, recent vitals, and demographic factors.
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.graphContainer}>
-        <View style={styles.graphHeader}>
-          <Text style={styles.graphTitle}>7-Day Risk Trend</Text>
-        </View>
-        <LineChart
-          data={{
-            labels: ["M", "T", "W", "T", "F", "S", "S"],
-            datasets: [
-              {
-                data: trendData,
-                color: (opacity = 1) => color,
-                strokeWidth: 3
-              }
-            ]
-          }}
-          width={screenWidth - 80}
-          height={160}
-          withDots={true}
-          withInnerLines={true}
-          withOuterLines={false}
-          withVerticalLines={false}
-          withHorizontalLines={true}
-          chartConfig={{
-            backgroundColor: "#FFFFFF",
-            backgroundGradientFrom: "#FFFFFF",
-            backgroundGradientTo: "#FFFFFF",
-            decimalPlaces: 0,
-            color: (opacity = 1) => color,
-            labelColor: (opacity = 1) => "#9CA3AF",
-            style: { borderRadius: 16 },
-            propsForDots: { r: "4", strokeWidth: "2", stroke: color }
-          }}
-          bezier
-          style={{ marginVertical: 8, borderRadius: 16 }}
-        />
-      </View>
-    </View>
-  );
-};
-
 // Doctor Ranking List Component
 const MOCK_DOCTORS = [
   { id: '1', name: 'Dr. Sarah Smith', spec: 'Cardiologist', rating: 4.9, exp: '15 Yrs Exp' },
@@ -515,7 +316,7 @@ export default function HomeScreen() {
   const currentRoute = segments[segments.length - 1];
   const { user, patientId } = useAuthStore();
   const { scan } = useLocalSearchParams<{ scan?: string }>();
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<any>({ name: 'Indresh' });
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [bodyMapVisible, setBodyMapVisible] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
@@ -530,6 +331,17 @@ export default function HomeScreen() {
 
   const [familyData, setFamilyData] = useState<any>(null);
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
+
+  // Risk factors for profile
+  const riskFactors = [
+    { text: 'Chronic headache history', color: '#F59E0B' },
+    { text: 'High stress levels', color: '#F59E0B' },
+    { text: 'Regular exercise routine', color: '#10B981' },
+  ];
+
+  // AI Summary
+  const aiSummary = 
+    "Swasthya AI has analyzed your health patterns. You show moderate risk factors with headache and anxiety being primary concerns. Regular monitoring and stress management recommended. Your adherence rate is 85% with stable vitals.";
 
   useEffect(() => {
     const resolvedId = user?.id || patientId;
@@ -559,7 +371,11 @@ export default function HomeScreen() {
     try {
       setIsLoadingProfile(true);
       const resolvedId = user?.id || patientId;
-      if (!resolvedId) return;
+      if (!resolvedId) {
+        setProfile({ name: 'Indresh' });
+        setIsLoadingProfile(false);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('patients')
@@ -571,16 +387,13 @@ export default function HomeScreen() {
       
       const mappedProfile = {
         ...data,
-        name: data?.full_name,
+        name: data?.full_name || 'Indresh',
       };
       setProfile(mappedProfile);
       console.log('✅ Profile name loaded:', mappedProfile.name);
     } catch (error) {
       console.error('Error fetching profile:', error);
-      // Set default profile using email if available
-      setProfile({
-        name: user?.email?.split('@')[0] || 'User',
-      });
+      setProfile({ name: 'Indresh' });
     } finally {
       setIsLoadingProfile(false);
     }
@@ -664,11 +477,10 @@ export default function HomeScreen() {
     }
   };
 
-  // Get user name from profile
-  const getUserName = () => {
-    if (profile?.name) return profile.name;
+  const getFirstName = () => {
+    if (profile?.name) return profile.name.split(' ')[0];
     if (user?.email) return user.email.split('@')[0];
-    return 'User';
+    return 'Indresh';
   };
 
   const handleScanReport = async () => {
@@ -704,25 +516,9 @@ export default function HomeScreen() {
     }
   };
 
-  // Get first name for greeting
-  const getFirstName = () => {
-    const fullName = getUserName();
-    return fullName.split(' ')[0];
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F9FAFB" />
-
-      {/* Top Navigation Bar with dynamic title */}
-      <TopNavBar
-        onScanPress={handleScanReport}
-        onNotificationPress={() => console.log('Notification pressed')}
-        onProfilePress={() => router.push('/(tabs)/profile')}
-        notificationCount={3}
-        userName={getUserName()}
-        activeScreen={currentRoute}
-      />
 
       {hasShownIntro ? (
         isDataLoading ? (
@@ -750,6 +546,20 @@ export default function HomeScreen() {
                   <Text style={styles.welcomeDescription}>Your individualized health intelligence hub is ready</Text>
                 </View>
 
+                {/* Risk Score Card - From Profile */}
+                <ProfileRiskScoreCard
+                  score={58}
+                  riskLevel="Moderate Risk"
+                  description="Your health risk score is moderate. Regular monitoring and healthy habits are recommended."
+                  factors={riskFactors}
+                />
+
+                {/* Health Graph Card - From Profile */}
+                <HealthGraphCard />
+
+                {/* AI Insights Card - From Profile */}
+                <AIInsightCard summaryText={aiSummary} />
+
                 {/* Government Scheme Card */}
                 <GovernmentSchemeCard />
 
@@ -764,9 +574,6 @@ export default function HomeScreen() {
 
                 {/* Smartwatch Simulator Area */}
                 <WatchSimulatorCard isAbnormal={isAbnormal} setIsAbnormal={setIsAbnormal} />
-
-                {/* Health Risk Score Area */}
-                <RiskScoreCard profile={profile} isAbnormal={isAbnormal} />
 
                 {/* Doctor Ranking Area */}
                 <DoctorRankingCard isAbnormal={isAbnormal} />
@@ -794,9 +601,6 @@ export default function HomeScreen() {
                 <Text style={styles.loadingText}>Analyzing Report...</Text>
               </View>
             )}
-
-            {/* AI Chat Button - Floating */}
-            <AIChatButton />
           </>
         )
       ) : (
@@ -824,20 +628,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
+    paddingBottom: 100,
+    paddingTop: 8,
   },
   content: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
+    paddingVertical: 12,
   },
   welcomeSection: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   welcomeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   shieldIcon: {
     width: 24,
@@ -855,35 +660,15 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   welcomeTitle: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   welcomeDescription: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: '#6B7280',
-  },
-  contentSection: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    fontWeight: '500',
   },
   // Prediction Card
   predCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderLeftWidth: 3, borderLeftColor: '#8B5CF6' },
@@ -903,180 +688,17 @@ const styles = StyleSheet.create({
   familyCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   familyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   familyTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111827' },
-  envFlag: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  envFlagText: { fontSize: 11, color: '#D97706', fontWeight: '600' },
   familyInsight: { fontSize: 13, color: '#374151', lineHeight: 18, marginBottom: 12, backgroundColor: '#F0F9FF', padding: 10, borderRadius: 10 },
   familyMemberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
   familyDot: { width: 10, height: 10, borderRadius: 5 },
   familyMemberLabel: { fontSize: 13, color: '#374151', fontWeight: '500' },
   familyTag: { fontSize: 12, fontWeight: '700' },
-  welcomeText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  infoText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 15,
-  },
-  // AI Chat Button Styles
-  aiChatButton: {
-    position: 'absolute',
-    bottom: 32,
-    right: 20,
-    marginVertical: 20,
-    shadowColor: '#0474FC',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  aiChatGradient: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Top Navigation Bar Styles
-  topNavContainer: {
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 40,
-    paddingBottom: 12,
-    backgroundColor: '#F9FAFB',
-  },
-  topNavBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  // Left Section
-  leftButton: {
-    shadowColor: '#0474FC',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  gradientButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Center Section
-  centerPill: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-  pillContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  blueDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#0474FC',
-    marginRight: 8,
-  },
-  pillText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 1.2,
-    color: '#1F2937',
-  },
-  // Right Section
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  iconButton: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  avatarButton: {
-    shadowColor: '#0474FC',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  avatarGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   // New Card Styles
   newCard: {
-    marginTop: 24,
+    marginTop: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
@@ -1085,16 +707,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
   cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
   },
   iconBg: {
     width: 36,
@@ -1102,11 +729,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
   },
   riskBadge: {
     paddingHorizontal: 12,
@@ -1116,57 +738,6 @@ const styles = StyleSheet.create({
   riskBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-  },
-  riskScoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 20,
-  },
-  scoreCircleWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreLarge: {
-    fontSize: 32,
-    fontWeight: '800',
-  },
-  scoreLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  scoreTextWrapper: {
-    flex: 1,
-  },
-  scoreDescTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  scoreDescText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: '#6B7280',
-  },
-  progressTrack: {
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   seeAllText: {
     fontSize: 14,
@@ -1256,67 +827,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
     textAlign: 'center',
-  },
-  graphContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  graphHeader: {
-    marginBottom: 8,
-  },
-  graphTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  chartArea: {
-    height: 120,
-    position: 'relative',
-  },
-  gridLineContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-  },
-  gridLine: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    width: '100%',
-  },
-  barsContainer: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 20,
-    paddingBottom: 0,
-  },
-  barWrapper: {
-    width: 24,
-    height: '100%',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
-  barFill: {
-    width: '100%',
-    borderRadius: 4,
-    minHeight: 4,
-  },
-  chartLabels: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    marginTop: 8,
-  },
-  chartLabelText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#9CA3AF',
   },
   followBtn: {
     paddingHorizontal: 12,

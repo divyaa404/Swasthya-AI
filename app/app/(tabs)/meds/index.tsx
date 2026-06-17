@@ -27,7 +27,7 @@ const FAKE_ANALYSIS = [
   { medicine: 'Vitamin D3', status: 'safe', note: 'OpenFDA: No adverse interactions detected.', color: '#10B981', icon: 'checkmark-circle' },
 ];
 
-const TopNavBar = ({ onScanPress, onNotificationPress, onProfilePress, notificationCount = 3, userName = 'Rahul', activeScreen = 'meds' }: any) => {
+const TopNavBar = ({ onScanPress, onNotificationPress, onProfilePress, notificationCount = 3, userName = 'Indresh', activeScreen = 'meds' }: any) => {
   const getTitle = () => {
     switch (activeScreen) {
       case 'home': return 'DASHBOARD';
@@ -357,7 +357,7 @@ export default function MedsScreen() {
           <body>
             <div class="header">
               <div class="title">SWASTHYA AI &mdash; JAN AUSHADHI READY PRESCRIPTION</div>
-              <div class="subtitle">Patient: Rahul | Date: ${new Date().toLocaleDateString('en-GB')}</div>
+              <div class="subtitle">Patient: Indresh | Date: ${new Date().toLocaleDateString('en-GB')}</div>
             </div>
 
             <p style="font-weight: bold; color: #374151;">Your Doctor's Prescription &rarr; Jan Aushadhi Generic</p>
@@ -457,7 +457,7 @@ export default function MedsScreen() {
         onNotificationPress={() => { }}
         onProfilePress={() => router.push('/(tabs)/profile')}
         notificationCount={3}
-        userName="Rahul"
+        userName="Indresh"
         activeScreen={currentRoute}
       />
       {loading ? <SkeletonMedsScreen /> : (

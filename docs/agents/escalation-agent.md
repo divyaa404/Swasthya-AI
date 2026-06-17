@@ -98,7 +98,7 @@ After the Python matrix fires a trigger, the Groq LLM is called with:
 The LLM cannot change the escalation level, the recommended action, or the disclaimer. It only makes the language feel human rather than robotic.
 
 **Example Tier 2 Immediate output:**
-> *"Rahul, we noticed you mentioned chest pain along with feeling short of breath. These two symptoms together need immediate attention. Please contact your doctor right away or go to an emergency department. This is an AI-generated pattern suggestion — your doctor makes the final call on what's needed."*
+> *"Indresh, we noticed you mentioned chest pain along with feeling short of breath. These two symptoms together need immediate attention. Please contact your doctor right away or go to an emergency department. This is an AI-generated pattern suggestion — your doctor makes the final call on what's needed."*
 
 ---
 
