@@ -1,18 +1,23 @@
 // src/pages/SignUp.tsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from '../hooks/useAuth';
 import '../styles/auth.css';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
+  const { signup } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [shake, setShake] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: "",
     mobileNumber: "",
+    email: "",
     password: "",
     confirmPassword: "",
     medicalRegNumber: "",
@@ -61,6 +66,12 @@ const SignUp: React.FC = () => {
       newErrors.mobileNumber = "Mobile number is required";
     } else if (!/^[0-9]{10}$/.test(formData.mobileNumber.trim())) {
       newErrors.mobileNumber = "Please enter a valid 10-digit mobile number";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      newErrors.email = "Please enter a valid email address";
     }
     
     if (!formData.password) {
@@ -123,10 +134,35 @@ const SignUp: React.FC = () => {
 
   const handleSubmit = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setErrors({});
+    
+    try {
+      const userData = {
+        fullName: formData.fullName,
+        phoneNumber: formData.mobileNumber,
+        email: formData.email,
+        password: formData.password,
+        specialization: formData.specialization,
+        medicalRegNumber: formData.medicalRegNumber,
+      };
+      
+      await signup(userData);
       navigate('/dashboard');
-    }, 1500);
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      
+      // Check if it's a rate limit error
+      if (error.message?.toLowerCase().includes('rate limit')) {
+        setErrors({ 
+          submit: '⚠️ Email rate limit exceeded. Please use a different email address or wait a few minutes.' 
+        });
+      } else {
+        setErrors({ submit: error.message || 'Failed to create account. Please try again.' });
+      }
+      triggerShake();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const triggerShake = () => {
@@ -156,6 +192,7 @@ const SignUp: React.FC = () => {
                     setFormData({...formData, fullName: e.target.value});
                     if (errors.fullName) setErrors({...errors, fullName: ""});
                   }}
+                  disabled={loading}
                 />
               </div>
               {errors.fullName && <p className="error-msg visible">{errors.fullName}</p>}
@@ -179,9 +216,36 @@ const SignUp: React.FC = () => {
                     if (errors.mobileNumber) setErrors({...errors, mobileNumber: ""});
                   }}
                   maxLength={10}
+                  disabled={loading}
                 />
               </div>
               {errors.mobileNumber && <p className="error-msg visible">{errors.mobileNumber}</p>}
+            </div>
+
+            <div className="field">
+              <label>Email Address <span className="required-star">*</span></label>
+              <div className={`input-wrap ${errors.email ? 'error' : ''}`}>
+                <span className="input-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </span>
+                <input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={formData.email}
+                  onChange={(e) => {
+                    setFormData({...formData, email: e.target.value});
+                    if (errors.email) setErrors({...errors, email: ""});
+                  }}
+                  disabled={loading}
+                />
+              </div>
+              {errors.email && <p className="error-msg visible">{errors.email}</p>}
+              <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                💡 Use a different email if you hit rate limit
+              </p>
             </div>
 
             <div className="field">
@@ -194,14 +258,34 @@ const SignUp: React.FC = () => {
                   </svg>
                 </span>
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Secure login credential"
                   value={formData.password}
                   onChange={(e) => {
                     setFormData({...formData, password: e.target.value});
                     if (errors.password) setErrors({...errors, password: ""});
                   }}
+                  disabled={loading}
                 />
+                <button 
+                  className="eye-toggle" 
+                  onClick={() => setShowPassword(!showPassword)} 
+                  type="button"
+                  disabled={loading}
+                >
+                  {showPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
               </div>
               {errors.password && <p className="error-msg visible">{errors.password}</p>}
             </div>
@@ -216,14 +300,34 @@ const SignUp: React.FC = () => {
                   </svg>
                 </span>
                 <input
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={(e) => {
                     setFormData({...formData, confirmPassword: e.target.value});
                     if (errors.confirmPassword) setErrors({...errors, confirmPassword: ""});
                   }}
+                  disabled={loading}
                 />
+                <button 
+                  className="eye-toggle" 
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                  type="button"
+                  disabled={loading}
+                >
+                  {showConfirmPassword ? (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                      <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
               </div>
               {errors.confirmPassword && <p className="error-msg visible">{errors.confirmPassword}</p>}
             </div>
@@ -249,6 +353,7 @@ const SignUp: React.FC = () => {
                     setFormData({...formData, medicalRegNumber: e.target.value});
                     if (errors.medicalRegNumber) setErrors({...errors, medicalRegNumber: ""});
                   }}
+                  disabled={loading}
                 />
               </div>
               {errors.medicalRegNumber && <p className="error-msg visible">{errors.medicalRegNumber}</p>}
@@ -270,6 +375,7 @@ const SignUp: React.FC = () => {
                     if (errors.specialization) setErrors({...errors, specialization: ""});
                   }}
                   className="specialization-select"
+                  disabled={loading}
                 >
                   <option value="">Select your specialization</option>
                   {specializations.map((spec) => (
@@ -291,6 +397,10 @@ const SignUp: React.FC = () => {
             <div className="review-item">
               <span className="review-label">Mobile Number</span>
               <span className="review-value">{formData.mobileNumber || "Not provided"}</span>
+            </div>
+            <div className="review-item">
+              <span className="review-label">Email</span>
+              <span className="review-value">{formData.email || "Not provided"}</span>
             </div>
             <div className="review-item">
               <span className="review-label">Medical Registration</span>
@@ -372,6 +482,17 @@ const SignUp: React.FC = () => {
           </div>
 
           <div className={`form-container ${shake ? "shake" : ""}`}>
+            {errors.submit && (
+              <div className="error-message-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <span>{errors.submit}</span>
+              </div>
+            )}
+            
             {renderStepContent()}
 
             <div className="button-row">

@@ -1,5 +1,4 @@
 // src/components/auth/ProtectedRoute.tsx
-import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -8,22 +7,26 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  
+  // Check if we're in development with skip login
+  const isSkipLogin = localStorage.getItem('skipLogin') === 'true';
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
-        Loading...
+      <div className="loading-container">
+        <div className="spinner"></div>
+        <p>Loading...</p>
       </div>
     );
   }
 
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  // Allow access if skip login is enabled OR user is authenticated
+  if (isSkipLogin || isAuthenticated) {
+    return <>{children}</>;
+  }
+
+  return <Navigate to="/login" replace />;
 };
 
 export default ProtectedRoute;

@@ -15,7 +15,7 @@ const Auth: React.FC = () => {
   const { login, isAuthenticated } = useAuth();
 
   const [loginData, setLoginData] = useState({
-    phoneNumber: "",
+    identifier: "",
     password: ""
   });
 
@@ -30,10 +30,8 @@ const Auth: React.FC = () => {
   const validateLogin = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!loginData.phoneNumber.trim()) {
-      newErrors.phoneNumber = "Phone number is required";
-    } else if (!/^[0-9]{10}$/.test(loginData.phoneNumber.trim())) {
-      newErrors.phoneNumber = "Please enter a valid 10-digit phone number";
+    if (!loginData.identifier.trim()) {
+      newErrors.identifier = "Phone number or email is required";
     }
 
     if (!loginData.password) {
@@ -58,13 +56,30 @@ const Auth: React.FC = () => {
     setLoading(true);
 
     try {
-      await login(loginData.phoneNumber, loginData.password);
-    } catch (err) {
-      setError("Invalid phone number or password. Please try again.");
+      await login(loginData.identifier, loginData.password);
+      navigate('/dashboard');
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials. Please try again.");
       triggerShake();
     } finally {
       setLoading(false);
     }
+  };
+
+  // Skip login - go directly to dashboard
+  const handleSkipLogin = () => {
+    console.log('🚀 Skip login - going to dashboard');
+    // Set flag to bypass authentication
+    localStorage.setItem('skipLogin', 'true');
+    // Store some dummy user data
+    localStorage.setItem('user', JSON.stringify({
+      id: 'skip-user',
+      fullName: 'Guest Doctor',
+      email: 'guest@swasthya.com',
+      role: 'doctor'
+    }));
+    // Navigate to dashboard
+    navigate('/dashboard', { replace: true });
   };
 
   const triggerShake = () => {
@@ -146,8 +161,8 @@ const Auth: React.FC = () => {
 
           <div className={`form-container ${shake ? "shake" : ""}`}>
             <div className="field">
-              <label>Phone Number</label>
-              <div className={`input-wrap ${errors.phoneNumber ? 'error' : ''}`}>
+              <label>Phone Number or Email</label>
+              <div className={`input-wrap ${errors.identifier ? 'error' : ''}`}>
                 <span className="input-icon">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
@@ -155,21 +170,20 @@ const Auth: React.FC = () => {
                   </svg>
                 </span>
                 <input
-                  type="tel"
-                  placeholder="Enter 10-digit phone number"
-                  value={loginData.phoneNumber}
+                  type="text"
+                  placeholder="Enter phone number or email"
+                  value={loginData.identifier}
                   onChange={(e) => { 
-                    setLoginData({ ...loginData, phoneNumber: e.target.value.replace(/\D/g, '') });
+                    setLoginData({ ...loginData, identifier: e.target.value });
                     setError("");
-                    if (errors.phoneNumber) {
-                      setErrors({ ...errors, phoneNumber: "" });
+                    if (errors.identifier) {
+                      setErrors({ ...errors, identifier: "" });
                     }
                   }}
-                  maxLength={10}
                   disabled={loading}
                 />
               </div>
-              {errors.phoneNumber && <p className="error-msg visible">{errors.phoneNumber}</p>}
+              {errors.identifier && <p className="error-msg visible">{errors.identifier}</p>}
             </div>
 
             <div className="field">
@@ -244,6 +258,15 @@ const Auth: React.FC = () => {
               ) : (
                 <span className="btn-text">Continue</span>
               )}
+            </button>
+
+            {/* Skip Login Button - Simple */}
+            <button
+              className="btn-skip-login"
+              onClick={handleSkipLogin}
+            >
+              <span className="btn-icon">⚡</span>
+              <span className="btn-text">Skip Login → Dashboard</span>
             </button>
           </div>
 
