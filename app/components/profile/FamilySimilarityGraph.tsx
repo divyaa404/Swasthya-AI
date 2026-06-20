@@ -1,27 +1,21 @@
 // app/components/profile/FamilySimilarityGraph.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   Dimensions,
   TouchableOpacity,
-  Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
-import { Svg, Circle, G, Path, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  Easing,
-} from 'react-native-reanimated';
+import { Svg, Circle, G, Path, Text as SvgText, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient as ExpoLinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_WIDTH = SCREEN_WIDTH * 1.8;
+const CANVAS_HEIGHT = 600;
 const CENTER_X = CANVAS_WIDTH / 2;
 const CENTER_Y = 260;
 
@@ -47,12 +41,10 @@ const COLORS = {
 
 // --- DATA MODEL (Neo4j Graph Emulation) ---
 const graphNodes = [
-  // People Nodes
   { id: 'indresh', label: 'Indresh', type: 'Person', role: 'Self', x: CENTER_X, y: CENTER_Y, color: COLORS.primary, data: { age: 20, phone: '+91 9324474812', risk: 'Moderate' } },
   { id: 'divya', label: 'Divya', type: 'Person', role: 'Mother', x: CENTER_X - 160, y: CENTER_Y - 120, color: COLORS.family, data: { age: 42, phone: '+91 7559302315', risk: 'Low' } },
   { id: 'monish', label: 'Monish', type: 'Person', role: 'Grandfather', x: CENTER_X - 140, y: CENTER_Y + 140, color: COLORS.family, data: { age: 65, phone: '+91 9372962545', risk: 'Low' } },
   { id: 'ankita', label: 'Ankita', type: 'Person', role: 'Child', x: CENTER_X + 160, y: CENTER_Y + 60, color: COLORS.family, data: { age: 10, phone: '+91 9970206614', risk: 'Low' } },
-  // Medical Nodes
   { id: 'symp_anxiety', label: 'Anxiety', type: 'Symptom', x: CENTER_X - 80, y: CENTER_Y - 80, color: COLORS.symptom, data: { severity: 'Moderate', connected: ['Indresh', 'Divya'] } },
   { id: 'symp_migraine', label: 'Migraine', type: 'Symptom', x: CENTER_X + 90, y: CENTER_Y - 90, color: COLORS.symptom, data: { severity: 'High', connected: ['Indresh'] } },
   { id: 'symp_fatigue', label: 'Fatigue', type: 'Symptom', x: CENTER_X - 60, y: CENTER_Y + 80, color: COLORS.symptom, data: { severity: 'Mild', connected: ['Monish'] } },
@@ -60,11 +52,9 @@ const graphNodes = [
 ];
 
 const graphEdges = [
-  // Relationships
   { source: 'indresh', target: 'divya', label: 'MOTHER' },
   { source: 'indresh', target: 'monish', label: 'GRANDFATHER' },
   { source: 'indresh', target: 'ankita', label: 'CHILD' },
-  // Health Vectors
   { source: 'indresh', target: 'symp_anxiety', label: 'REPORTS' },
   { source: 'indresh', target: 'symp_migraine', label: 'REPORTS' },
   { source: 'divya', target: 'symp_anxiety', label: 'REPORTS' },
@@ -74,28 +64,85 @@ const graphEdges = [
 
 export const FamilySimilarityGraph = () => {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  
-  const panelOpacity = useSharedValue(0);
-  const panelTranslateY = useSharedValue(20);
-
   const selectedNode = graphNodes.find(n => n.id === selectedNodeId);
+
+  // --- STANDARD ANIMATIONS FOR DETAILS PANEL ---
+  const panelOpacity = useRef(new Animated.Value(0)).current;
+  const panelTranslateY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     if (selectedNodeId) {
-      panelOpacity.value = withTiming(1, { duration: 300 });
-      panelTranslateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+      Animated.parallel([
+        Animated.timing(panelOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.spring(panelTranslateY, { toValue: 0, damping: 15, stiffness: 100, useNativeDriver: true })
+      ]).start();
     } else {
-      panelOpacity.value = withTiming(0, { duration: 200 });
-      panelTranslateY.value = withTiming(20, { duration: 200 });
+      Animated.parallel([
+        Animated.timing(panelOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(panelTranslateY, { toValue: 20, duration: 200, useNativeDriver: true })
+      ]).start();
     }
   }, [selectedNodeId]);
 
-  const animatedPanelStyle = useAnimatedStyle(() => ({
-    opacity: panelOpacity.value,
-    transform: [{ translateY: panelTranslateY.value }],
-  }));
+  // --- PAN & ZOOM LOGIC ---
+  const pan = useRef(new Animated.ValueXY({ 
+    x: -(CANVAS_WIDTH - SCREEN_WIDTH) / 2, 
+    y: 0 
+  })).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+  
+  const currentScale = useRef(0.9);
+  const initialTouchDistance = useRef<number | null>(null);
 
-  // Helper to render dynamic details based on node type
+  useEffect(() => {
+    const listener = scale.addListener(({ value }) => { currentScale.current = value; });
+    return () => scale.removeListener(listener);
+  }, []);
+
+  const getDistance = (touches: any) => {
+    if (touches.length < 2) return 0;
+    const [t1, t2] = touches;
+    return Math.sqrt(Math.pow(t2.pageX - t1.pageX, 2) + Math.pow(t2.pageY - t1.pageY, 2));
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        return Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5 || gesture.numberActiveTouches === 2;
+      },
+      onPanResponderGrant: (evt) => { 
+        pan.extractOffset(); 
+        if (evt.nativeEvent.touches.length === 2) {
+          initialTouchDistance.current = getDistance(evt.nativeEvent.touches);
+        }
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 2) {
+          if (initialTouchDistance.current) {
+            const currentDistance = getDistance(touches);
+            if (currentDistance > 0) {
+              const scaleFactor = currentDistance / initialTouchDistance.current;
+              const newScale = Math.max(0.4, Math.min(currentScale.current * scaleFactor, 2.5));
+              scale.setValue(newScale);
+            }
+          }
+        } else if (touches.length === 1 && !initialTouchDistance.current) {
+          pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+        }
+      },
+      onPanResponderRelease: () => { 
+        pan.flattenOffset(); 
+        initialTouchDistance.current = null; 
+      },
+      onPanResponderTerminate: () => {
+        initialTouchDistance.current = null;
+      }
+    })
+  ).current;
+
+  // --- RENDERING HELPERS ---
   const renderNodeDetails = () => {
     if (!selectedNode) return null;
 
@@ -149,108 +196,103 @@ export const FamilySimilarityGraph = () => {
         <Text style={styles.subtitle}>Interactive entity mapping and symptom vectors</Text>
       </View>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollContent}
-        // Start scroll position roughly in the middle
-        contentOffset={{ x: (CANVAS_WIDTH - SCREEN_WIDTH) / 2, y: 0 }} 
-      >
-        <Svg width={CANVAS_WIDTH} height={520}>
-          <Defs>
-            {/* Soft grid pattern background */}
-            <LinearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#F1F5F9" stopOpacity="0.5"/>
-              <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0"/>
-            </LinearGradient>
-          </Defs>
+      <View style={styles.canvasContainer} {...panResponder.panHandlers}>
+        <Animated.View style={{ transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: scale }] }}>
+          <Svg width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
+            <Defs>
+              <LinearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#F1F5F9" stopOpacity="0.5"/>
+                <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0"/>
+              </LinearGradient>
+            </Defs>
 
-          {/* Draw Edges (Relationships) */}
-          {graphEdges.map((edge, index) => {
-            const source = graphNodes.find(n => n.id === edge.source);
-            const target = graphNodes.find(n => n.id === edge.target);
-            if (!source || !target) return null;
+            {/* Draw Edges */}
+            {graphEdges.map((edge, index) => {
+              const source = graphNodes.find(n => n.id === edge.source);
+              const target = graphNodes.find(n => n.id === edge.target);
+              if (!source || !target) return null;
 
-            const isHighlighted = selectedNodeId === source.id || selectedNodeId === target.id;
-            const midX = (source.x + target.x) / 2;
-            const midY = (source.y + target.y) / 2;
+              const isHighlighted = selectedNodeId === source.id || selectedNodeId === target.id;
+              const midX = (source.x + target.x) / 2;
+              const midY = (source.y + target.y) / 2;
 
-            return (
-              <G key={`edge-${index}`}>
-                <Path 
-                  d={`M ${source.x} ${source.y} Q ${midX} ${midY + 20} ${target.x} ${target.y}`} 
-                  stroke={isHighlighted ? COLORS.primary : '#E2E8F0'} 
-                  strokeWidth={isHighlighted ? 2.5 : 1.5} 
-                  fill="none" 
-                  strokeDasharray={edge.label.includes('REPORTS') ? '4,4' : undefined} 
-                />
-                {/* Neo4j Style Relationship Labels */}
-                {isHighlighted && (
-                  <G transform={`translate(${midX}, ${midY})`}>
-                    <Rect x="-40" y="-10" width="80" height="20" rx="10" fill="#FFFFFF" stroke="#E2E8F0" />
-                    <SvgText textAnchor="middle" y="3" fontSize="8" fontWeight="700" fill={COLORS.text.secondary} letterSpacing="0.5">
-                      {edge.label}
-                    </SvgText>
-                  </G>
-                )}
-              </G>
-            );
-          })}
+              return (
+                <G key={`edge-${index}`}>
+                  <Path 
+                    d={`M ${source.x} ${source.y} Q ${midX} ${midY + 20} ${target.x} ${target.y}`} 
+                    stroke={isHighlighted ? COLORS.primary : '#E2E8F0'} 
+                    strokeWidth={isHighlighted ? 2.5 : 1.5} 
+                    fill="none" 
+                    strokeDasharray={edge.label.includes('REPORTS') ? '4,4' : undefined} 
+                  />
+                  {isHighlighted && (
+                    <G transform={`translate(${midX}, ${midY})`}>
+                      <Rect x="-40" y="-10" width="80" height="20" rx="10" fill="#FFFFFF" stroke="#E2E8F0" />
+                      <SvgText textAnchor="middle" y="3" fontSize="8" fontWeight="700" fill={COLORS.text.secondary} letterSpacing="0.5">
+                        {edge.label}
+                      </SvgText>
+                    </G>
+                  )}
+                </G>
+              );
+            })}
 
-          {/* Draw Nodes (Entities) */}
-          {graphNodes.map((node) => {
-            const isSelected = selectedNodeId === node.id;
-            const isPerson = node.type === 'Person';
-            const radius = isSelected ? 32 : 28;
+            {/* Draw Nodes */}
+            {graphNodes.map((node) => {
+              const isSelected = selectedNodeId === node.id;
+              const isPerson = node.type === 'Person';
+              const radius = isSelected ? 32 : 28;
 
-            return (
-              <G key={node.id} onPress={() => setSelectedNodeId(isSelected ? null : node.id)}>
-                {isSelected && (
-                  <Circle cx={node.x} cy={node.y} r={radius + 8} fill={node.color} opacity={0.15} />
-                )}
-                <Circle 
-                  cx={node.x} 
-                  cy={node.y} 
-                  r={radius} 
-                  fill="#FFFFFF" 
-                  stroke={node.color} 
-                  strokeWidth={isSelected ? 4 : 2} 
-                />
-                <Circle 
-                  cx={node.x} 
-                  cy={node.y} 
-                  r={radius - 4} 
-                  fill={node.color} 
-                  opacity={0.1} 
-                />
-                <SvgText x={node.x} y={node.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill={node.color}>
-                  {node.label.charAt(0)}
-                </SvgText>
-                
-                {/* Node Label Below */}
-                <SvgText 
-                  x={node.x} 
-                  y={node.y + radius + 18} 
-                  textAnchor="middle" 
-                  fontSize="12" 
-                  fontWeight={isSelected ? '700' : '600'} 
-                  fill={COLORS.text.primary}
-                >
-                  {node.label}
-                </SvgText>
-                {/* Node Type Subtitle */}
-                <SvgText x={node.x} y={node.y + radius + 32} textAnchor="middle" fontSize="10" fill={COLORS.text.light}>
-                  {isPerson ? node.role : node.type}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
-      </ScrollView>
+              return (
+                <G key={node.id} onPress={() => setSelectedNodeId(isSelected ? null : node.id)}>
+                  {isSelected && (
+                    <Circle cx={node.x} cy={node.y} r={radius + 8} fill={node.color} opacity={0.15} />
+                  )}
+                  <Circle 
+                    cx={node.x} 
+                    cy={node.y} 
+                    r={radius} 
+                    fill="#FFFFFF" 
+                    stroke={node.color} 
+                    strokeWidth={isSelected ? 4 : 2} 
+                  />
+                  <Circle 
+                    cx={node.x} 
+                    cy={node.y} 
+                    r={radius - 4} 
+                    fill={node.color} 
+                    opacity={0.1} 
+                  />
+                  <SvgText x={node.x} y={node.y + 6} textAnchor="middle" fontSize="16" fontWeight="800" fill={node.color}>
+                    {node.label.charAt(0)}
+                  </SvgText>
+                  
+                  <SvgText 
+                    x={node.x} 
+                    y={node.y + radius + 18} 
+                    textAnchor="middle" 
+                    fontSize="12" 
+                    fontWeight={isSelected ? '700' : '600'} 
+                    fill={COLORS.text.primary}
+                  >
+                    {node.label}
+                  </SvgText>
+                  <SvgText x={node.x} y={node.y + radius + 32} textAnchor="middle" fontSize="10" fill={COLORS.text.light}>
+                    {isPerson ? node.role : node.type}
+                  </SvgText>
+                </G>
+              );
+            })}
+          </Svg>
+        </Animated.View>
+      </View>
 
       {/* Floating Details Panel */}
-      {selectedNode && (
-        <Animated.View style={[styles.detailsPanel, animatedPanelStyle]}>
+      <Animated.View 
+        style={[styles.detailsPanel, { opacity: panelOpacity, transform: [{ translateY: panelTranslateY }] }]} 
+        pointerEvents={selectedNodeId ? 'auto' : 'none'}
+      >
+        {selectedNode && (
           <ExpoLinearGradient
             colors={[`${selectedNode.color}15`, '#FFFFFF']}
             start={{ x: 0, y: 0 }}
@@ -275,29 +317,13 @@ export const FamilySimilarityGraph = () => {
                 <Ionicons name="close" size={24} color={COLORS.text.light} />
               </TouchableOpacity>
             </View>
-
             {renderNodeDetails()}
-            
           </ExpoLinearGradient>
-        </Animated.View>
-      )}
-
-      {/* Helper component for SVG Rect to fix missing import in native SVG usually */}
-      <Defs>
-         <Path id="rectMock"/>
-      </Defs>
+        )}
+      </Animated.View>
     </View>
   );
 };
-
-// SVG Rect component declaration since it wasn't imported top-level
-const Rect = ({ x, y, width, height, rx, fill, stroke }: any) => (
-  <Path 
-    d={`M${Number(x)+Number(rx)},${y} h${Number(width)-2*Number(rx)} a${rx},${rx} 0 0 1 ${rx},${rx} v${Number(height)-2*Number(rx)} a${rx},${rx} 0 0 1 -${rx},${rx} h-${Number(width)-2*Number(rx)} a${rx},${rx} 0 0 1 -${rx},-${rx} v-${Number(height)-2*Number(rx)} a${rx},${rx} 0 0 1 ${rx},-${rx} z`} 
-    fill={fill} 
-    stroke={stroke} 
-  />
-);
 
 const styles = StyleSheet.create({
   container: { 
@@ -308,6 +334,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 24,
     paddingBottom: 8,
+    zIndex: 10,
   },
   title: {
     fontSize: 20,
@@ -320,11 +347,9 @@ const styles = StyleSheet.create({
     color: COLORS.text.secondary,
     marginTop: 4,
   },
-  scrollContent: { 
-    flexGrow: 1, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    paddingVertical: 20,
+  canvasContainer: { 
+    flex: 1, 
+    overflow: 'hidden',
   },
   detailsPanel: { 
     position: 'absolute',

@@ -10,6 +10,7 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -136,59 +137,85 @@ const getSafeId = (nodeObjOrStr: any) => typeof nodeObjOrStr === 'string' ? node
 const useForceSimulation = (data: any, width: number, height: number) => {
   const [nodes, setNodes] = useState<any[]>([]);
   const [edges, setEdges] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const simNodes = data.nodes.map((d: any) => ({ ...d }));
-    const simEdges = data.edges.map((d: any) => ({ ...d }));
-
-    const root = simNodes.find((n: any) => n.id === 'Indresh');
-    if (root) {
-      root.fx = width / 2;
-      root.fy = height / 2;
-    }
-
-    const simulation = forceSimulation(simNodes)
-      .force('link', forceLink(simEdges)
-        .id((d: any) => d.id)
-        .distance((link: any) => link.weight === 3 ? 160 : (link.type === 'cross' ? 250 : 60))
-        .strength((link: any) => link.type === 'cross' ? 0.05 : 0.8)
-      )
-      .force('charge', forceManyBody().strength(-180))
-      .force('center', forceCenter(width / 2, height / 2))
-      .force('collide', forceCollide().radius((d: any) => d.radius + 10).iterations(2))
-      .force('radial', forceRadial(180, width / 2, height / 2).strength((d: any) => d.type === 'category' ? 0.8 : 0))
-      .alphaDecay(0.06)
-      .velocityDecay(0.4); 
-      
-    let frameId: number | null = null;
-
-    simulation.on('tick', () => {
-      if (!frameId) {
-        frameId = requestAnimationFrame(() => {
-          setNodes([...simNodes]);
-          setEdges([...simEdges]);
-          frameId = null;
-        });
-      }
-    });
-
-    simulation.alpha(1).restart();
+    setIsLoading(true);
     
-    return () => {
-      simulation.stop();
-      if (frameId) cancelAnimationFrame(frameId);
-    };
+    // Use requestAnimationFrame to defer heavy computation
+    requestAnimationFrame(() => {
+      const simNodes = data.nodes.map((d: any) => ({ ...d }));
+      const simEdges = data.edges.map((d: any) => ({ ...d }));
+
+      const root = simNodes.find((n: any) => n.id === 'Indresh');
+      if (root) {
+        root.fx = width / 2;
+        root.fy = height / 2;
+      }
+
+      const simulation = forceSimulation(simNodes)
+        .force('link', forceLink(simEdges)
+          .id((d: any) => d.id)
+          .distance((link: any) => link.weight === 3 ? 160 : (link.type === 'cross' ? 250 : 60))
+          .strength((link: any) => link.type === 'cross' ? 0.05 : 0.8)
+        )
+        .force('charge', forceManyBody().strength(-180))
+        .force('center', forceCenter(width / 2, height / 2))
+        .force('collide', forceCollide().radius((d: any) => d.radius + 10).iterations(2))
+        .force('radial', forceRadial(180, width / 2, height / 2).strength((d: any) => d.type === 'category' ? 0.8 : 0))
+        .alphaDecay(0.06)
+        .velocityDecay(0.4); 
+        
+      let frameId: number | null = null;
+      let tickCount = 0;
+      const maxTicks = 80; // Limit ticks for performance
+
+      simulation.on('tick', () => {
+        tickCount++;
+        if (!frameId && tickCount <= maxTicks) {
+          frameId = requestAnimationFrame(() => {
+            setNodes([...simNodes]);
+            setEdges([...simEdges]);
+            frameId = null;
+            
+            if (tickCount >= maxTicks) {
+              setIsLoading(false);
+            }
+          });
+        }
+      });
+
+      // Set a timeout to force completion if simulation takes too long
+      const timeoutId = setTimeout(() => {
+        setIsLoading(false);
+        if (frameId) {
+          cancelAnimationFrame(frameId);
+          frameId = null;
+        }
+        setNodes([...simNodes]);
+        setEdges([...simEdges]);
+      }, 3000);
+
+      simulation.alpha(1).restart();
+      
+      return () => {
+        simulation.stop();
+        if (frameId) cancelAnimationFrame(frameId);
+        clearTimeout(timeoutId);
+      };
+    });
   }, [data, width, height]);
 
-  return { nodes, edges };
+  return { nodes, edges, isLoading };
 };
 
 // --- ENHANCED PAN & ZOOM GRAPH VIEW WITH PINCH-TO-ZOOM ---
 const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any) => void }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [graphReady, setGraphReady] = useState(false);
   
   const canvasSize = Math.max(SCREEN_WIDTH * 2, 1100);
-  const { nodes, edges } = useForceSimulation(data, canvasSize, canvasSize);
+  const { nodes, edges, isLoading } = useForceSimulation(data, canvasSize, canvasSize);
 
   // Animation Values
   const pan = useRef(new Animated.ValueXY({ 
@@ -208,6 +235,13 @@ const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any
     });
     return () => scale.removeListener(listener);
   }, []);
+
+  // Set graph ready when nodes are loaded
+  useEffect(() => {
+    if (!isLoading && nodes.length > 0) {
+      setGraphReady(true);
+    }
+  }, [isLoading, nodes]);
 
   // Helper to calculate distance between two fingers
   const getDistance = (touches: any) => {
@@ -277,6 +311,17 @@ const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any
   };
 
   const getNodeColor = (type: string) => COLORS.nodes[type as keyof typeof COLORS.nodes] || COLORS.nodes.category;
+
+  // Show loading state
+  if (isLoading || !graphReady) {
+    return (
+      <View style={[styles.graphContainer, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#38BDF8" />
+        <Text style={styles.loadingText}>Rendering health network...</Text>
+        <Text style={styles.loadingSubText}>Building your health connections</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.graphContainer} {...panResponder.panHandlers}>
@@ -361,13 +406,26 @@ const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any
 export const HealthGraphCard = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const [isOpening, setIsOpening] = useState(false);
 
   const totalNodes = GRAPH_DATA.nodes.length;
   const totalRelationships = GRAPH_DATA.edges.length;
 
+  const handleOpenModal = () => {
+    setIsOpening(true);
+    setShowModal(true);
+    // Reset opening state after a delay
+    setTimeout(() => setIsOpening(false), 500);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedNode(null);
+    setShowModal(false);
+  };
+
   return (
     <>
-      <TouchableOpacity style={styles.card} onPress={() => setShowModal(true)} activeOpacity={0.9}>
+      <TouchableOpacity style={styles.card} onPress={handleOpenModal} activeOpacity={0.9}>
         <LinearGradient colors={['#111111', '#080808']} style={styles.cardGradient}>
           <View style={styles.cardHeader}>
             <View style={styles.iconBox}><Ionicons name="git-network" size={20} color={COLORS.nodes.patient} /></View>
@@ -385,7 +443,7 @@ export const HealthGraphCard = () => {
       <Modal visible={showModal} animationType="fade" transparent={false}>
         <SafeAreaView style={styles.modal}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)} style={styles.modalBack}>
+            <TouchableOpacity onPress={handleCloseModal} style={styles.modalBack}>
               <Ionicons name="close" size={24} color="#FFF" />
               <Text style={styles.modalBackText}>Close</Text>
             </TouchableOpacity>
@@ -427,6 +485,26 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12 },
   statText: { color: COLORS.text.secondary, fontSize: 13, fontWeight: '500' },
   graphContainer: { flex: 1, backgroundColor: COLORS.bg },
+  loadingContainer: { 
+    flex: 1, 
+    backgroundColor: COLORS.bg, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 20,
+    fontFamily: 'Poppins_600SemiBold',
+  },
+  loadingSubText: {
+    color: COLORS.text.secondary,
+    fontSize: 13,
+    marginTop: 8,
+    fontFamily: 'Poppins_400Regular',
+  },
   modal: { flex: 1, backgroundColor: COLORS.bg },
   modalHeader: { backgroundColor: COLORS.bg, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border },
   modalBack: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 80 },
@@ -440,4 +518,4 @@ const styles = StyleSheet.create({
   hintText: { color: COLORS.text.secondary, fontSize: 12, fontWeight: '600' }
 });
 
-export default HealthGraphCard;
+export default HealthGraphCard; 
