@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
 import { backendService } from '@/services/backend.service';
+import { HealthGraphCard } from '../profile/HealthGraphCard';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -38,57 +39,66 @@ interface AgentStep {
 
 const PIPELINE: AgentStep[] = [
   {
-    id: 'health_summary',
-    title: 'Health Summarization',
-    subtitle: 'Sarvam Chat Agent - Summarizing overall health',
+    id: 'conversation_agent',
+    title: 'Conversation Agent',
+    subtitle: 'Handles chat, voice, and user interaction.',
     icon: 'chatbubble-ellipses-outline',
-    color: '#0474FC',
+    color: '#38BDF8',
+    durationMs: 1800,
+    logLines: [],
+  },
+  {
+    id: 'health_extraction_agent',
+    title: 'Health Extraction Agent',
+    subtitle: 'Extracts symptoms, medicines, lifestyle habits, family history, severity, duration.',
+    icon: 'document-text-outline',
+    color: '#F97316',
     durationMs: 2000,
     logLines: [],
   },
   {
-    id: 'medical_scan',
-    title: 'Medical Report Scanner',
-    subtitle: 'Medical Scan Agent - Scanning past medical issues',
-    icon: 'document-text-outline',
-    color: '#3B82F6',
-    durationMs: 2500,
-    logLines: [],
-  },
-  {
-    id: 'smartwatch',
-    title: 'Wearable Data Tracker',
-    subtitle: 'Smartwatch Risk Agent - Tracking smartwatch data',
-    icon: 'watch-outline',
-    color: '#10B981',
-    durationMs: 2500,
-    logLines: [],
-  },
-  {
-    id: 'family_history',
-    title: 'Family Genetics Assessor',
-    subtitle: 'Family Genetics Agent - Tracking family similarity issues',
-    icon: 'people-outline',
+    id: 'graph_memory_agent',
+    title: 'Graph Memory Agent',
+    subtitle: 'Updates and queries Neo4j health graph.',
+    icon: 'git-network-outline',
     color: '#8B5CF6',
     durationMs: 2200,
     logLines: [],
   },
   {
-    id: 'risk_score',
-    title: 'Clinical Risk Evaluator',
-    subtitle: 'Risk Scoring Agent - Generating a risk score',
+    id: 'risk_analysis_agent',
+    title: 'Risk Analysis Agent',
+    subtitle: 'Analyzes symptom progression, family history, lifestyle risks, recurring patterns.',
     icon: 'speedometer-outline',
-    color: '#F59E0B',
-    durationMs: 3000,
+    color: '#EF4444',
+    durationMs: 2400,
     logLines: [],
   },
   {
-    id: 'final_summary',
-    title: 'Clinical Report Finalizer',
-    subtitle: 'Doctor Q&A Agent - Finalizing summary',
-    icon: 'checkmark-done-circle-outline',
-    color: '#EF4444',
+    id: 'insight_recommendation_agent',
+    title: 'Insight & Recommendation Agent',
+    subtitle: 'Generates explainable insights and recommendations.',
+    icon: 'bulb-outline',
+    color: '#EAB308',
     durationMs: 2000,
+    logLines: [],
+  },
+  {
+    id: 'doctor_report_agent',
+    title: 'Doctor Report Agent',
+    subtitle: 'Creates summaries and timelines for healthcare professionals.',
+    icon: 'document-attach-outline',
+    color: '#10B981',
+    durationMs: 1800,
+    logLines: [],
+  },
+  {
+    id: 'workflow_orchestrator',
+    title: 'Workflow Orchestrator',
+    subtitle: 'Render Workflow coordinating all agents.',
+    icon: 'layers-outline',
+    color: '#6366F1',
+    durationMs: 1600,
     logLines: [],
   },
 ];
@@ -298,11 +308,12 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     setVisibleLogLines(PIPELINE.map(() => 0));
     await delay(300);
 
+    // Step 0: Conversation Agent
     setStepStatuses(prev => { const n = [...prev]; n[0] = 'running'; return n; });
     const logs0 = [
-      '→ Fetching session messages from Supabase...',
-      '→ Translating patient speech/text input into clinical English...',
-      '→ Running entity extractor for symptoms (severity/duration)...'
+      '→ Initializing Conversation Agent session...',
+      '→ Processing speech and dialogue inputs...',
+      '→ Restoring conversation context state...'
     ];
     for (let l = 1; l <= logs0.length; l++) {
       PIPELINE[0].logLines = logs0.slice(0, l);
@@ -311,20 +322,21 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     }
     const finalLogs0 = [
       ...logs0,
-      '✓ Extracted clinical entities successfully.',
-      '✓ daily_summary: Compiled overall health summary notes.',
-      '✓ Symptom logged: Headache (severity 6/10, onset 3 days ago).'
+      '✓ Audio input processed via Sarvam STT.',
+      '✓ Dialogue state history loaded.',
+      '✓ Active query parsed successfully.'
     ];
     PIPELINE[0].logLines = finalLogs0;
     setVisibleLogLines(prev => { const n = [...prev]; n[0] = finalLogs0.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[0] = 'done'; return n; });
     await delay(400);
 
+    // Step 1: Health Extraction Agent
     setStepStatuses(prev => { const n = [...prev]; n[1] = 'running'; return n; });
     const logs1 = [
-      '→ Accessing historical patient clinical documents...',
-      '→ Running OCR/structure engine on lipid profile report...',
-      '→ Inspecting past glucose HbA1c values...'
+      '→ Activating Clinical entity parser...',
+      '→ Scanning text for symptoms and severity...',
+      '→ Extracting medication schedules and dosage details...'
     ];
     for (let l = 1; l <= logs1.length; l++) {
       PIPELINE[1].logLines = logs1.slice(0, l);
@@ -333,19 +345,21 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     }
     const finalLogs1 = [
       ...logs1,
-      '✓ Extracted lab values (Fasting glucose: 110 mg/dL).',
-      '✓ Past history scanned: Hypertension, Pre-diabetes.'
+      '✓ Extracted Symptom: Fever (severity: 6/10, duration: 3 days).',
+      '✓ Extracted Meds: Metformin 500mg, Amlokind 5mg.',
+      '✓ Extracted Lifestyle: Sedentary, late sleeping.'
     ];
     PIPELINE[1].logLines = finalLogs1;
     setVisibleLogLines(prev => { const n = [...prev]; n[1] = finalLogs1.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[1] = 'done'; return n; });
     await delay(400);
 
+    // Step 2: Graph Memory Agent
     setStepStatuses(prev => { const n = [...prev]; n[2] = 'running'; return n; });
     const logs2 = [
-      '→ Querying sensor stream data (PPG and accelerometer)...',
-      '→ Scanning heart rate samples around reported symptom times...',
-      '→ Inspecting daily sleep cycles and step levels...'
+      '→ Connecting to Neo4j AuraDB graph database...',
+      '→ Executing Cypher query to retrieve user node: Indresh...',
+      '→ Mapping connections: (:User)-[:REPORTED]->(:SymptomEvent)...'
     ];
     for (let l = 1; l <= logs2.length; l++) {
       PIPELINE[2].logLines = logs2.slice(0, l);
@@ -354,19 +368,21 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     }
     const finalLogs2 = [
       ...logs2,
-      '✓ Correlated symptom: Peak heart rate of 105 bpm during headache.',
-      '✓ HRV is healthy (45ms). No critical arrhythmia or AFib.'
+      '✓ Neo4j AuraDB transactions committed successfully.',
+      '✓ Linked FeverEvent to previous symptom timeline (Day 3 -> Day 1).',
+      '✓ Graph Memory updated: relationships synchronized.'
     ];
     PIPELINE[2].logLines = finalLogs2;
     setVisibleLogLines(prev => { const n = [...prev]; n[2] = finalLogs2.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[2] = 'done'; return n; });
     await delay(400);
 
+    // Step 3: Risk Analysis Agent
     setStepStatuses(prev => { const n = [...prev]; n[3] = 'running'; return n; });
     const logs3 = [
-      '→ Pulling family history profile records...',
-      '→ Evaluating genetics risk factor mapping...',
-      '→ Cross-referencing maternal cardiovascular/diabetic history...'
+      '→ Traversing hereditary conditions in family tree graph...',
+      '→ Analyzing symptom progression metrics...',
+      '→ Correlating lifestyle impacts and sleeping habits...'
     ];
     for (let l = 1; l <= logs3.length; l++) {
       PIPELINE[3].logLines = logs3.slice(0, l);
@@ -375,41 +391,44 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     }
     const finalLogs3 = [
       ...logs3,
-      '✓ Mapped inherited risk for diabetes (maternal side).',
-      '✓ Hereditary score adjustment calculated successfully.'
+      '✓ Inherited risk match: Diabetes (maternal line).',
+      '✓ Risk Score adjusted for missed Metformin compliance.',
+      '✓ Evaluated recurring symptom recurrence intervals.'
     ];
     PIPELINE[3].logLines = finalLogs3;
     setVisibleLogLines(prev => { const n = [...prev]; n[3] = finalLogs3.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[3] = 'done'; return n; });
     await delay(400);
 
+    // Step 4: Insight & Recommendation Agent
     setStepStatuses(prev => { const n = [...prev]; n[4] = 'running'; return n; });
     const logs4 = [
-      '→ Fetching clinical guidelines (AHA/ACC Hypertension 2017)...',
-      '→ Adjusting calculations for age, vitals, and genetics...',
-      '→ Adjusting score for missed Metformin compliance flag (+3)...'
+      '→ Constructing reasoning path for medical insights...',
+      '→ Validating guidelines against AHA/ADA standards...',
+      '→ Formulating plain-text wellness guidance...'
     ];
     for (let l = 1; l <= logs4.length; l++) {
       PIPELINE[4].logLines = logs4.slice(0, l);
       setVisibleLogLines(prev => { const n = [...prev]; n[4] = l; return n; });
-      await delay(600);
+      await delay(500);
     }
     const finalLogs4 = [
       ...logs4,
-      '✓ Base score calculated: 65.',
-      '✓ Final adjusted score: 68.',
-      '✓ Risk category: Moderate Risk (BP & missed dose correction).'
+      '✓ Insights generated with 92% confidence score.',
+      '✓ Formatted explainable risk alerts.',
+      '✓ Scheduled daily step target: 8000+ steps.'
     ];
     PIPELINE[4].logLines = finalLogs4;
     setVisibleLogLines(prev => { const n = [...prev]; n[4] = finalLogs4.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[4] = 'done'; return n; });
     await delay(400);
 
+    // Step 5: Doctor Report Agent
     setStepStatuses(prev => { const n = [...prev]; n[5] = 'running'; return n; });
     const logs5 = [
-      '→ Writing finalized daily summaries into Supabase tables...',
-      '→ Formatting analysis logs for physician report dashboard...',
-      '→ Creating tailored patient clinical insights...'
+      '→ Compiling structured clinical summary object...',
+      '→ Generating health timeline data structure...',
+      '→ Exporting report template for primary physician review...'
     ];
     for (let l = 1; l <= logs5.length; l++) {
       PIPELINE[5].logLines = logs5.slice(0, l);
@@ -418,13 +437,36 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
     }
     const finalLogs5 = [
       ...logs5,
-      '✓ Summarized daily chat, smartwatch, history, and scans.',
-      '✓ Pipeline completed: All agent systems processed.',
-      '✓ Generating risk scoreboard.'
+      '✓ Structured summary generated successfully.',
+      '✓ Exportable doctor-ready profile updated.',
+      '✓ Prepared clinician dashboard update payload.'
     ];
     PIPELINE[5].logLines = finalLogs5;
     setVisibleLogLines(prev => { const n = [...prev]; n[5] = finalLogs5.length; return n; });
     setStepStatuses(prev => { const n = [...prev]; n[5] = 'done'; return n; });
+    await delay(400);
+
+    // Step 6: Workflow Orchestrator
+    setStepStatuses(prev => { const n = [...prev]; n[6] = 'running'; return n; });
+    const logs6 = [
+      '→ Orchestrating workflow state machine execution...',
+      '→ Verifying background process execution and retries...',
+      '→ Resolving task synchronizations...'
+    ];
+    for (let l = 1; l <= logs6.length; l++) {
+      PIPELINE[6].logLines = logs6.slice(0, l);
+      setVisibleLogLines(prev => { const n = [...prev]; n[6] = l; return n; });
+      await delay(500);
+    }
+    const finalLogs6 = [
+      ...logs6,
+      '✓ Render Workflow finished successfully.',
+      '✓ Session tracking completed (Status: EXECUTED).',
+      '✓ All specialized agents successfully processed.'
+    ];
+    PIPELINE[6].logLines = finalLogs6;
+    setVisibleLogLines(prev => { const n = [...prev]; n[6] = finalLogs6.length; return n; });
+    setStepStatuses(prev => { const n = [...prev]; n[6] = 'done'; return n; });
 
     setAllDone(true);
   };
@@ -556,7 +598,7 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
                 <View style={{ marginLeft: 14 }}>
                   <Text style={styles.introTitle}>Multi-Agent AI Pipeline</Text>
                   <Text style={styles.introSub}>
-                    6 specialised clinical agents processing your session
+                    7 specialised clinical agents processing your session
                   </Text>
                 </View>
               </LinearGradient>
@@ -600,6 +642,10 @@ export const AgentLog: React.FC<AgentLogProps> = ({ onClose }) => {
                   <Text style={styles.insightsText}>
                     • <Text style={{ fontWeight: '700', color: '#FFFFFF' }}>Advice</Text>: Ensure hydration, follow evening Amlodipine schedule, and consult doctor for missed Metformin advice.
                   </Text>
+                </View>
+
+                <View style={{ width: '100%', marginBottom: 16 }}>
+                  <HealthGraphCard autoOpen={true} />
                 </View>
 
                 <TouchableOpacity

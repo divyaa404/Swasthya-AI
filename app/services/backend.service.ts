@@ -9,34 +9,82 @@ export const backendService = {
     // Jan Aushadhi Stores
     getNearestStores: async (lat: number, lon: number) => {
         await delay(1000);
+        
+        const REAL_STORES = [
+            {
+                id: 'real-store-1',
+                store_name: 'Jan Aushadhi Borivali (West)',
+                latitude: 19.2299,
+                longitude: 72.8480,
+                area: 'Shop No. 4, Bethlehem Apartments, S V Patel Road, Near Dominos & Bhagwati Hospital, Borivali (West)',
+            },
+            {
+                id: 'real-store-2',
+                store_name: 'Jan Aushadhi Andheri (East)',
+                latitude: 19.1155,
+                longitude: 72.8687,
+                area: 'Shop No. 11, Mubarak Manzil, Church Road, Marol, Andheri (East)',
+            },
+            {
+                id: 'real-store-3',
+                store_name: 'Jan Aushadhi Ghatkopar (West)',
+                latitude: 19.0886,
+                longitude: 72.9082,
+                area: 'Ghatkopar Seva Sangh, Near Chirag Nagar Police Station, LBS Marg, Ghatkopar (West)',
+            },
+            {
+                id: 'real-store-4',
+                store_name: 'Jan Aushadhi Kandivali (West)',
+                latitude: 19.2062,
+                longitude: 72.8427,
+                area: 'Shop No. 18, Nemi Krishna Co-op Society, Jethwa Nagar, V L Road, Kandivali (West)',
+            },
+            {
+                id: 'real-store-5',
+                store_name: 'Jan Aushadhi Malad (West)',
+                latitude: 19.1860,
+                longitude: 72.8485,
+                area: 'Shop No. 1, Kothari Apartment, Mamlatdar Wadi, S V Road, Malad (West)',
+            },
+            {
+                id: 'real-store-6',
+                store_name: 'Jan Aushadhi Navi Mumbai (Kharghar)',
+                latitude: 19.0260,
+                longitude: 73.0694,
+                area: 'Shop No. 13, Plot No. 35-36, Maitri Icon, Kpc High School Rd, Sector-19, Kharghar',
+            },
+            {
+                id: 'real-store-7',
+                store_name: 'Jan Aushadhi Thane (West)',
+                latitude: 19.2183,
+                longitude: 72.9781,
+                area: 'Shop No. D/6, Siddhivinayak Co-op Society, Sawarkar Nagar, Thane (West)',
+            }
+        ];
+
+        const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+            const R = 6371; // Earth radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        };
+
+        const sortedStores = REAL_STORES.map(store => {
+            const dist = calculateDistance(lat, lon, store.latitude, store.longitude);
+            return {
+                ...store,
+                distance_km: dist.toFixed(1)
+            };
+        }).sort((a, b) => parseFloat(a.distance_km) - parseFloat(b.distance_km));
+
         return {
             status: 'success',
-            stores: [
-                {
-                    id: 'store-1',
-                    store_name: 'Jan Aushadhi Kendra - Sector 15',
-                    latitude: lat + 0.005,
-                    longitude: lon + 0.005,
-                    area: 'Sector 15, Vashi',
-                    distance_km: '0.6'
-                },
-                {
-                    id: 'store-2',
-                    store_name: 'Pradhan Mantri Bhartiya Janaushadhi Kendra',
-                    latitude: lat - 0.007,
-                    longitude: lon - 0.003,
-                    area: 'Koparkhairane',
-                    distance_km: '1.2'
-                },
-                {
-                    id: 'store-3',
-                    store_name: 'Janaushadhi Kendra - CBD Belapur',
-                    latitude: lat + 0.012,
-                    longitude: lon - 0.008,
-                    area: 'Belapur Station Complex',
-                    distance_km: '2.5'
-                }
-            ]
+            stores: sortedStores.slice(0, 3)
         };
     },
 

@@ -1,5 +1,5 @@
 // app/components/profile/HealthGraphCard.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,527 +7,512 @@ import {
   TouchableOpacity,
   Modal,
   SafeAreaView,
-  ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Svg, Circle, Line, Text as SvgText, G, Path } from 'react-native-svg';
+import { Svg, Circle, G, Path, Text as SvgText, Defs, RadialGradient, Stop } from 'react-native-svg';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// MODERN 60FPS GESTURE IMPORTS
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, useAnimatedStyle } from 'react-native-reanimated';
+
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCenter,
+  forceCollide,
+  forceRadial,
+} from 'd3-force';
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const COLORS = {
-  primary: '#0474FC',
-  primaryDark: '#0360D0',
-  card: '#FFFFFF',
-  background: '#F8FAFC',
-  text: {
-    primary: '#111827',
-    secondary: '#6B7280',
-    light: '#9CA3AF',
-  },
-  node: {
-    user: '#0474FC',
-    symptom: '#EF4444',
-    fact: '#14B8A6',
-    disease: '#8B5CF6',
-    default: '#6B7280',
+  bg: '#0F0F13',
+  card: '#181822',
+  border: '#2C2C3A',
+  primary: '#1A1A1A',
+  text: { primary: '#F8FAFC', secondary: '#94A3B8', light: '#475569' },
+  nodes: {
+    patient: '#38BDF8',
+    category: '#64748B',
+    disease: '#F43F5E',
+    symptoms: '#F97316',
+    medications: '#10B981',
+    lifestyle: '#EAB308',
+    habits: '#F59E0B',
+    allergies: '#EC4899',
+    surgeries: '#14B8A6',
+    familyHistory: '#8B5CF6',
+    labReports: '#A855F7',
+    vitals: '#06B6D4',
+    mentalHealth: '#6366F1',
+    nutrition: '#84CC16',
+    sleep: '#3B82F6',
+    exercise: '#22C55E',
+    doctorVisits: '#0EA5E9',
   },
 };
 
-interface HealthGraphCardProps {
-  onViewGraph?: () => void;
-}
-
-// Simplified Graph Data
+// --- THE FULL DATASET ---
 const GRAPH_DATA = {
   nodes: [
-    { id: 'user', label: 'Indresh', type: 'user', color: COLORS.node.user, radius: 34 },
-    { id: 'headache', label: 'Headache', type: 'symptom', color: COLORS.node.symptom, severity: 6 },
-    { id: 'anxiety', label: 'Anxiety', type: 'symptom', color: COLORS.node.symptom, severity: 5 },
-    { id: 'fatigue', label: 'Fatigue', type: 'symptom', color: COLORS.node.symptom, severity: 4 },
-    { id: 'sleep', label: 'Irregular Sleep', type: 'fact', color: COLORS.node.fact },
-    { id: 'stress', label: 'High Stress', type: 'fact', color: COLORS.node.fact },
-    { id: 'exercise', label: 'Regular Exercise', type: 'fact', color: COLORS.node.fact },
-    { id: 'diet', label: 'Irregular Meals', type: 'fact', color: COLORS.node.fact },
-    { id: 'migraine', label: 'Chronic Migraine', type: 'disease', color: COLORS.node.disease },
+    { id: 'Indresh', label: 'Indresh', type: 'patient', radius: 36 },
+    // Categories
+    { id: 'cat_symptoms', label: 'Symptoms', type: 'category', radius: 20 },
+    { id: 'cat_diseases', label: 'Diseases', type: 'category', radius: 20 },
+    { id: 'cat_medications', label: 'Medications', type: 'category', radius: 20 },
+    { id: 'cat_lifestyle', label: 'Lifestyle', type: 'category', radius: 20 },
+    { id: 'cat_habits', label: 'Habits', type: 'category', radius: 20 },
+    { id: 'cat_allergies', label: 'Allergies', type: 'category', radius: 20 },
+    { id: 'cat_labs', label: 'Lab Reports', type: 'category', radius: 20 },
+    { id: 'cat_vitals', label: 'Vitals', type: 'category', radius: 20 },
+    { id: 'cat_sleep', label: 'Sleep', type: 'category', radius: 20 },
+    { id: 'cat_exercise', label: 'Exercise', type: 'category', radius: 20 },
+    // Sub-nodes - with proper labels
+    { id: 'sym_fever', label: 'Fever', type: 'symptoms', radius: 12 },
+    { id: 'sym_headache', label: 'Headache', type: 'symptoms', radius: 12 },
+    { id: 'sym_fatigue', label: 'Fatigue', type: 'symptoms', radius: 12 },
+    { id: 'sym_dizziness', label: 'Dizziness', type: 'symptoms', radius: 12 },
+    { id: 'dis_t2d', label: 'Type 2 Diabetes', type: 'disease', radius: 12 },
+    { id: 'dis_htn', label: 'Hypertension', type: 'disease', radius: 12 },
+    { id: 'dis_obesity', label: 'Obesity', type: 'disease', radius: 12 },
+    { id: 'dis_predia', label: 'Prediabetes', type: 'disease', radius: 12 },
+    { id: 'med_metformin', label: 'Metformin', type: 'medications', radius: 12 },
+    { id: 'med_lisinopril', label: 'Lisinopril', type: 'medications', radius: 12 },
+    { id: 'med_vitd', label: 'Vitamin D', type: 'medications', radius: 12 },
+    { id: 'life_sedentary', label: 'Sedentary', type: 'lifestyle', radius: 12 },
+    { id: 'life_water', label: 'Low Water', type: 'lifestyle', radius: 12 },
+    { id: 'hab_late', label: 'Late Sleeping', type: 'habits', radius: 12 },
+    { id: 'hab_screen', label: 'Excess Screen', type: 'habits', radius: 12 },
+    { id: 'alg_dust', label: 'Dust', type: 'allergies', radius: 12 },
+    { id: 'alg_pollen', label: 'Pollen', type: 'allergies', radius: 12 },
+    { id: 'lab_hba1c', label: 'HbA1c', type: 'labReports', radius: 12 },
+    { id: 'lab_chol', label: 'Cholesterol', type: 'labReports', radius: 12 },
+    { id: 'lab_vitd', label: 'Vitamin D', type: 'labReports', radius: 12 },
+    { id: 'vit_bp', label: 'Blood Pressure', type: 'vitals', radius: 12 },
+    { id: 'vit_bmi', label: 'BMI', type: 'vitals', radius: 12 },
+    { id: 'slp_6hr', label: '6 Hours Sleep', type: 'sleep', radius: 12 },
+    { id: 'slp_quality', label: 'Poor Quality', type: 'sleep', radius: 12 },
+    { id: 'exc_walking', label: 'Walking', type: 'exercise', radius: 12 },
   ],
   edges: [
-    { source: 'user', target: 'headache', label: 'HAS' },
-    { source: 'user', target: 'anxiety', label: 'HAS' },
-    { source: 'user', target: 'fatigue', label: 'HAS' },
-    { source: 'user', target: 'sleep', label: 'HAS' },
-    { source: 'user', target: 'stress', label: 'HAS' },
-    { source: 'user', target: 'exercise', label: 'HAS' },
-    { source: 'user', target: 'diet', label: 'HAS' },
-    { source: 'user', target: 'migraine', label: 'HAS' },
-    { source: 'stress', target: 'headache', label: 'TRIGGERS' },
-    { source: 'sleep', target: 'headache', label: 'TRIGGERS' },
-    { source: 'stress', target: 'anxiety', label: 'TRIGGERS' },
-    { source: 'diet', target: 'fatigue', label: 'CAUSES' },
-    { source: 'migraine', target: 'headache', label: 'CAUSES' },
+    // Hierarchy
+    { source: 'Indresh', target: 'cat_symptoms', weight: 3 },
+    { source: 'Indresh', target: 'cat_diseases', weight: 3 },
+    { source: 'Indresh', target: 'cat_medications', weight: 3 },
+    { source: 'Indresh', target: 'cat_lifestyle', weight: 3 },
+    { source: 'Indresh', target: 'cat_habits', weight: 3 },
+    { source: 'Indresh', target: 'cat_allergies', weight: 3 },
+    { source: 'Indresh', target: 'cat_labs', weight: 3 },
+    { source: 'Indresh', target: 'cat_vitals', weight: 3 },
+    { source: 'Indresh', target: 'cat_sleep', weight: 3 },
+    { source: 'Indresh', target: 'cat_exercise', weight: 3 },
+    { source: 'cat_symptoms', target: 'sym_fever' }, { source: 'cat_symptoms', target: 'sym_headache' }, { source: 'cat_symptoms', target: 'sym_fatigue' }, { source: 'cat_symptoms', target: 'sym_dizziness' },
+    { source: 'cat_diseases', target: 'dis_t2d' }, { source: 'cat_diseases', target: 'dis_htn' }, { source: 'cat_diseases', target: 'dis_obesity' }, { source: 'cat_diseases', target: 'dis_predia' },
+    { source: 'cat_medications', target: 'med_metformin' }, { source: 'cat_medications', target: 'med_lisinopril' }, { source: 'cat_medications', target: 'med_vitd' },
+    { source: 'cat_lifestyle', target: 'life_sedentary' }, { source: 'cat_lifestyle', target: 'life_water' },
+    { source: 'cat_habits', target: 'hab_late' }, { source: 'cat_habits', target: 'hab_screen' },
+    { source: 'cat_allergies', target: 'alg_dust' }, { source: 'cat_allergies', target: 'alg_pollen' },
+    { source: 'cat_labs', target: 'lab_hba1c' }, { source: 'cat_labs', target: 'lab_chol' }, { source: 'cat_labs', target: 'lab_vitd' },
+    { source: 'cat_vitals', target: 'vit_bp' }, { source: 'cat_vitals', target: 'vit_bmi' },
+    { source: 'cat_sleep', target: 'slp_6hr' }, { source: 'cat_sleep', target: 'slp_quality' },
+    { source: 'cat_exercise', target: 'exc_walking' },
+    
+    // Cross-links
+    { source: 'dis_t2d', target: 'med_metformin', type: 'cross' },
+    { source: 'dis_t2d', target: 'lab_hba1c', type: 'cross' },
+    { source: 'dis_htn', target: 'vit_bp', type: 'cross' },
+    { source: 'life_sedentary', target: 'dis_obesity', type: 'cross' },
+    { source: 'dis_obesity', target: 'vit_bmi', type: 'cross' },
+    { source: 'hab_late', target: 'sym_fatigue', type: 'cross' },
+    { source: 'slp_6hr', target: 'sym_fatigue', type: 'cross' },
+    { source: 'lab_vitd', target: 'sym_fatigue', type: 'cross' },
   ],
 };
 
-// Graph Visualization Component
-const GraphVisualization = ({ nodes, edges }) => {
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+const getSafeId = (nodeObjOrStr: any) => typeof nodeObjOrStr === 'string' ? nodeObjOrStr : nodeObjOrStr.id;
+
+// --- D3 OBSIDIAN PHYSICS ENGINE ---
+const useForceSimulation = (data: any, width: number, height: number) => {
+  const [nodes, setNodes] = useState<any[]>([]);
+  const [edges, setEdges] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    requestAnimationFrame(() => {
+      const simNodes = data.nodes.map((d: any) => ({ ...d }));
+      const simEdges = data.edges.map((d: any) => ({ ...d }));
+
+      const root = simNodes.find((n: any) => n.id === 'Indresh');
+      if (root) {
+        root.fx = width / 2;
+        root.fy = height / 2;
+      }
+
+      const simulation = forceSimulation(simNodes)
+        .force('link', forceLink(simEdges)
+          .id((d: any) => d.id)
+          .distance((link: any) => link.weight === 3 ? 180 : (link.type === 'cross' ? 280 : 70))
+          .strength((link: any) => link.type === 'cross' ? 0.05 : 0.7)
+        )
+        .force('charge', forceManyBody().strength(-300))
+        .force('center', forceCenter(width / 2, height / 2))
+        .force('collide', forceCollide().radius((d: any) => d.radius + 15).iterations(2))
+        .force('radial', forceRadial(200, width / 2, height / 2).strength((d: any) => d.type === 'category' ? 0.8 : 0))
+        .alphaDecay(0.05)
+        .velocityDecay(0.4); 
+        
+      let frameId: number | null = null;
+      let tickCount = 0;
+      const maxTicks = 100;
+
+      simulation.on('tick', () => {
+        tickCount++;
+        if (!frameId && tickCount <= maxTicks) {
+          frameId = requestAnimationFrame(() => {
+            setNodes([...simNodes]);
+            setEdges([...simEdges]);
+            frameId = null;
+            if (tickCount >= maxTicks) {
+              setIsLoading(false);
+            }
+          });
+        }
+      });
+
+      const timeoutId = setTimeout(() => {
+        setIsLoading(false);
+        if (frameId) {
+          cancelAnimationFrame(frameId);
+          frameId = null;
+        }
+        setNodes([...simNodes]);
+        setEdges([...simEdges]);
+      }, 3500);
+
+      simulation.alpha(1).restart();
+      
+      return () => {
+        simulation.stop();
+        if (frameId) cancelAnimationFrame(frameId);
+        clearTimeout(timeoutId);
+      };
+    });
+  }, [data, width, height]);
+
+  return { nodes, edges, isLoading };
+};
+
+// --- MODERN GESTURE GRAPH VIEW ---
+const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any) => void }) => {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [graphReady, setGraphReady] = useState(false);
   
-  const centerX = SCREEN_WIDTH / 2 - 20;
-  const centerY = 200;
-  const radius = 150;
+  const canvasSize = Math.max(SCREEN_WIDTH * 3, 1400);
+  const { nodes, edges, isLoading } = useForceSimulation(data, canvasSize, canvasSize);
 
-  // Get connected nodes (excluding user)
-  const connectedNodes = nodes.filter(n => n.type !== 'user');
-  
-  const getNodePosition = (index: number, total: number) => {
-    const angle = (index / total) * 2 * Math.PI - Math.PI / 2;
-    return {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-    };
+  const scale = useSharedValue(0.7);
+  const savedScale = useSharedValue(0.7);
+  const translateX = useSharedValue(-(canvasSize - SCREEN_WIDTH) / 2);
+  const translateY = useSharedValue(-(canvasSize - SCREEN_HEIGHT) / 2);
+  const savedTranslateX = useSharedValue(-(canvasSize - SCREEN_WIDTH) / 2);
+  const savedTranslateY = useSharedValue(-(canvasSize - SCREEN_HEIGHT) / 2);
+
+  useEffect(() => {
+    if (!isLoading && nodes.length > 0) setGraphReady(true);
+  }, [isLoading, nodes]);
+
+  const pinchGesture = Gesture.Pinch()
+    .onUpdate((e) => {
+      scale.value = Math.max(0.3, Math.min(savedScale.value * e.scale, 3.0));
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+    });
+
+  const panGesture = Gesture.Pan()
+    .minDistance(15)
+    .onUpdate((e) => {
+      translateX.value = savedTranslateX.value + e.translationX;
+      translateY.value = savedTranslateY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedTranslateX.value = translateX.value;
+      savedTranslateY.value = translateY.value;
+    });
+
+  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const handleNodePress = (node: any) => {
+    const newSelected = selectedId === node.id ? null : node.id;
+    setSelectedId(newSelected);
+    onNodeSelect(newSelected ? node : null);
   };
 
-  const getNodeColor = (type: string) => {
-    switch (type) {
-      case 'user': return COLORS.node.user;
-      case 'symptom': return COLORS.node.symptom;
-      case 'fact': return COLORS.node.fact;
-      case 'disease': return COLORS.node.disease;
-      default: return COLORS.node.default;
-    }
-  };
-
-  const getNodeTypeLabel = (type: string) => {
-    switch (type) {
-      case 'user': return 'You';
-      case 'symptom': return 'Symptom';
-      case 'fact': return 'Health Fact';
-      case 'disease': return 'Condition';
-      default: return 'Node';
-    }
-  };
-
-  const isConnectedToSelected = (nodeId: string) => {
-    if (!selectedNode) return true;
-    if (nodeId === selectedNode) return true;
+  const isHighlighted = (nodeId: string) => {
+    if (!selectedId) return true;
+    if (nodeId === selectedId) return true;
     return edges.some(e => 
-      (e.source === selectedNode && e.target === nodeId) ||
-      (e.target === selectedNode && e.source === nodeId)
+      (getSafeId(e.source) === selectedId && getSafeId(e.target) === nodeId) || 
+      (getSafeId(e.target) === selectedId && getSafeId(e.source) === nodeId)
     );
   };
 
-  const getNodeOpacity = (nodeId: string) => {
-    if (!selectedNode) return 1;
-    if (nodeId === selectedNode) return 1;
-    return isConnectedToSelected(nodeId) ? 0.8 : 0.2;
-  };
+  const getNodeColor = (type: string) => COLORS.nodes[type as keyof typeof COLORS.nodes] || COLORS.nodes.category;
 
-  const getEdgeOpacity = (source: string, target: string) => {
-    if (!selectedNode) return 0.4;
-    if (source === selectedNode || target === selectedNode) return 0.9;
-    return 0.15;
-  };
-
-  const getNodePositionFromId = (nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return { x: centerX, y: centerY };
-    
-    if (node.type === 'user') {
-      return { x: centerX, y: centerY };
-    }
-    
-    const idx = connectedNodes.indexOf(node);
-    if (idx === -1) return { x: centerX, y: centerY };
-    return getNodePosition(idx, connectedNodes.length);
-  };
-
-  const handleNodePress = (nodeId: string) => {
-    setSelectedNode(selectedNode === nodeId ? null : nodeId);
-  };
-
-  const selectedNodeData = nodes.find(n => n.id === selectedNode);
+  if (isLoading || !graphReady) {
+    return (
+      <View style={[styles.graphContainer, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={COLORS.nodes.patient} />
+        <Text style={styles.loadingText}>Building Health Network...</Text>
+        <Text style={styles.loadingSubText}>Rendering spatial layout</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.graphContainer}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.graphWrapper}>
-          <Svg width={SCREEN_WIDTH * 1.6} height={460}>
-            {/* Draw edges */}
-            {edges.map((edge, index) => {
-              const sourcePos = getNodePositionFromId(edge.source);
-              const targetPos = getNodePositionFromId(edge.target);
-              const opacity = getEdgeOpacity(edge.source, edge.target);
-              const isHighlighted = selectedNode && (edge.source === selectedNode || edge.target === selectedNode);
+    <GestureDetector gesture={composedGesture}>
+      <View style={styles.graphContainer}>
+        <Animated.View style={animatedStyle}>
+          <Svg width={canvasSize} height={canvasSize}>
+            
+            <Defs>
+              {Object.entries(COLORS.nodes).map(([key, color]) => (
+                <RadialGradient key={`glow-${key}`} id={`glow-${key}`} cx="50%" cy="50%" r="50%">
+                  <Stop offset="0%" stopColor={color} stopOpacity="0.4" />
+                  <Stop offset="100%" stopColor={color} stopOpacity="0" />
+                </RadialGradient>
+              ))}
+            </Defs>
+
+            {/* Edges */}
+            {edges.map((edge, i) => {
+              if (!edge.source.x || !edge.target.x) return null;
               
-              const midX = (sourcePos.x + targetPos.x) / 2;
-              const midY = (sourcePos.y + targetPos.y) / 2 - 15;
-              const pathData = `M ${sourcePos.x} ${sourcePos.y} Q ${midX} ${midY} ${targetPos.x} ${targetPos.y}`;
+              const sourceId = getSafeId(edge.source);
+              const targetId = getSafeId(edge.target);
+              const isCrossLink = edge.type === 'cross';
+              const isActive = selectedId && (sourceId === selectedId || targetId === selectedId);
               
+              const opacity = !selectedId ? (isCrossLink ? 0.2 : 0.6) : (isActive ? 0.9 : 0.05);
+              
+              const d = isCrossLink 
+                ? `M ${edge.source.x} ${edge.source.y} Q ${(edge.source.x + edge.target.x)/2 + 60} ${(edge.source.y + edge.target.y)/2 - 60} ${edge.target.x} ${edge.target.y}`
+                : `M ${edge.source.x} ${edge.source.y} L ${edge.target.x} ${edge.target.y}`;
+
               return (
                 <Path
-                  key={index}
-                  d={pathData}
-                  stroke={isHighlighted ? COLORS.primary : '#CBD5E1'}
-                  strokeWidth={isHighlighted ? 2.5 : 1.5}
-                  strokeDasharray={isHighlighted ? undefined : '4,4'}
-                  opacity={opacity}
+                  key={`edge-${i}`}
+                  d={d}
+                  stroke={isActive ? '#FFFFFF' : (isCrossLink ? COLORS.text.light : COLORS.border)}
+                  strokeWidth={isActive ? 2 : (isCrossLink ? 1 : 2)}
+                  strokeDasharray={isCrossLink ? "4,6" : "none"}
                   fill="none"
+                  opacity={opacity}
                 />
               );
             })}
 
-            {/* Draw nodes */}
+            {/* Nodes */}
             {nodes.map((node) => {
-              const isUser = node.type === 'user';
-              const pos = isUser 
-                ? { x: centerX, y: centerY } 
-                : getNodePosition(connectedNodes.indexOf(node), connectedNodes.length);
+              if (!node.x) return null;
               
               const color = getNodeColor(node.type);
-              const isSelected = selectedNode === node.id;
-              const isConnected = isConnectedToSelected(node.id);
-              const opacity = getNodeOpacity(node.id);
-              const radius = isUser ? 38 : 30;
+              const isSelected = selectedId === node.id;
+              const opacity = isHighlighted(node.id) ? 1 : 0.15;
+              const isRoot = node.type === 'patient';
+              const isCategory = node.type === 'category';
+              
+              // ALWAYS show labels for ALL nodes (fix for sub-nodes)
+              const showLabel = true;
+              const textOpacity = isRoot || isSelected ? 1 : (isCategory ? 0.9 : 0.7);
+              const textWeight = isRoot || isSelected ? '700' : (isCategory ? '600' : '500');
+              const fontSize = isRoot ? 16 : (isCategory ? 12 : 10);
+              const labelColor = isSelected || isRoot ? '#FFFFFF' : COLORS.text.secondary;
               
               return (
-                <G key={node.id}>
-                  {/* Glow effect for selected node */}
-                  {isSelected && (
-                    <Circle
-                      cx={pos.x}
-                      cy={pos.y}
-                      r={radius + 12}
-                      fill={color}
-                      opacity={0.12}
-                    />
+                <G key={`node-${node.id}`} onPress={() => handleNodePress(node)}>
+                  {/* Outer Glow */}
+                  <Circle 
+                    cx={node.x} 
+                    cy={node.y} 
+                    r={node.radius * 2.5} 
+                    fill={`url(#glow-${Object.keys(COLORS.nodes).find(k => COLORS.nodes[k as keyof typeof COLORS.nodes] === color)})`} 
+                    opacity={opacity * 0.8} 
+                  />
+                  
+                  {/* Solid Inner Node */}
+                  <Circle 
+                    cx={node.x} 
+                    cy={node.y} 
+                    r={node.radius} 
+                    fill={COLORS.card} 
+                    stroke={color} 
+                    strokeWidth={isSelected ? 3 : 1.5} 
+                    opacity={opacity}
+                  />
+                  
+                  {/* Faint tint inside */}
+                  <Circle cx={node.x} cy={node.y} r={node.radius - 2} fill={color} opacity={opacity * 0.2} />
+
+                  {/* Initial for Root */}
+                  {isRoot && (
+                    <SvgText 
+                      x={node.x} 
+                      y={node.y + (node.radius * 0.35)} 
+                      textAnchor="middle" 
+                      fontSize={node.radius * 0.9} 
+                      fontWeight="800" 
+                      fill={color} 
+                      opacity={opacity}
+                    >
+                      {node.label.charAt(0)}
+                    </SvgText>
                   )}
-                  
-                  {/* Node shadow */}
-                  <Circle
-                    cx={pos.x + 2}
-                    cy={pos.y + 2}
-                    r={radius}
-                    fill="rgba(0,0,0,0.08)"
-                    opacity={0.3}
-                  />
-                  
-                  {/* Main node circle */}
-                  <Circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    r={radius}
-                    fill={color}
-                    opacity={opacity}
-                    stroke={isSelected ? '#FFFFFF' : 'rgba(255,255,255,0.5)'}
-                    strokeWidth={isSelected ? 3 : 1.5}
-                  />
-                  
-                  {/* Inner highlight */}
-                  <Circle
-                    cx={pos.x - 4}
-                    cy={pos.y - 6}
-                    r={radius * 0.3}
-                    fill="rgba(255,255,255,0.2)"
-                    opacity={opacity * 0.6}
-                  />
-                  
-                  {/* Node label (first letter) */}
+
+                  {/* Category Icon */}
+                  {isCategory && (
+                    <SvgText 
+                      x={node.x} 
+                      y={node.y + (node.radius * 0.35)} 
+                      textAnchor="middle" 
+                      fontSize={node.radius * 0.7} 
+                      fontWeight="700" 
+                      fill={color} 
+                      opacity={opacity}
+                    >
+                      {node.label.charAt(0)}
+                    </SvgText>
+                  )}
+
+                  {/* Floating Name Label - NOW SHOWN FOR ALL NODES */}
                   <SvgText
-                    x={pos.x}
-                    y={pos.y + 6}
+                    x={node.x}
+                    y={node.y + node.radius + (isRoot ? 20 : (isCategory ? 18 : 16))}
                     textAnchor="middle"
-                    fontSize={isUser ? 18 : 14}
-                    fontWeight="700"
-                    fill="#FFFFFF"
-                    opacity={opacity}
-                  >
-                    {node.label.charAt(0)}
-                  </SvgText>
-                  
-                  {/* Node full label below */}
-                  <SvgText
-                    x={pos.x}
-                    y={pos.y + radius + 16}
-                    textAnchor="middle"
-                    fontSize={isSelected ? 11 : 10}
-                    fontWeight={isSelected ? '700' : '500'}
-                    fill={isSelected ? COLORS.primary : COLORS.text.secondary}
-                    opacity={opacity}
+                    fontSize={fontSize}
+                    fontWeight={textWeight}
+                    fill={labelColor}
+                    opacity={opacity * textOpacity}
+                    letterSpacing="0.2"
                   >
                     {node.label}
                   </SvgText>
-                  
-                  {/* Touch area */}
-                  <Circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    r={radius + 10}
-                    fill="transparent"
-                    onPress={() => handleNodePress(node.id)}
-                  />
                 </G>
               );
             })}
           </Svg>
-        </View>
-      </ScrollView>
-
-      {/* Legend */}
-      <View style={styles.legendContainer}>
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.node.user }]} />
-            <Text style={styles.legendText}>You</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.node.symptom }]} />
-            <Text style={styles.legendText}>Symptoms</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.node.fact }]} />
-            <Text style={styles.legendText}>Health Facts</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: COLORS.node.disease }]} />
-            <Text style={styles.legendText}>Conditions</Text>
-          </View>
-        </View>
+        </Animated.View>
       </View>
-
-      {/* Node Details Panel */}
-      {selectedNodeData && (
-        <View style={styles.detailsPanel}>
-          <View style={styles.detailsHeader}>
-            <View style={[styles.detailsIcon, { backgroundColor: getNodeColor(selectedNodeData.type) }]}>
-              <Text style={styles.detailsInitial}>{selectedNodeData.label.charAt(0)}</Text>
-            </View>
-            <View style={styles.detailsInfo}>
-              <Text style={styles.detailsTitle}>{selectedNodeData.label}</Text>
-              <Text style={styles.detailsType}>{getNodeTypeLabel(selectedNodeData.type)}</Text>
-            </View>
-            <TouchableOpacity onPress={() => setSelectedNode(null)}>
-              <Ionicons name="close" size={20} color={COLORS.text.secondary} />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.detailsBody}>
-            {selectedNodeData.severity && (
-              <View style={styles.detailsRow}>
-                <Text style={styles.detailsLabel}>Severity</Text>
-                <View style={styles.detailsBadge}>
-                  <Text style={styles.detailsBadgeText}>{selectedNodeData.severity}/10</Text>
-                </View>
-              </View>
-            )}
-            
-            <View style={styles.detailsRow}>
-              <Text style={styles.detailsLabel}>Connections</Text>
-              <Text style={styles.detailsValue}>
-                {edges.filter(e => e.source === selectedNodeData.id || e.target === selectedNodeData.id).length}
-              </Text>
-            </View>
-            
-            {/* Show connected nodes */}
-            <View style={styles.detailsConnections}>
-              <Text style={styles.detailsLabel}>Connected to:</Text>
-              <View style={styles.detailsTags}>
-                {edges
-                  .filter(e => e.source === selectedNodeData.id || e.target === selectedNodeData.id)
-                  .map((e, i) => {
-                    const connectedId = e.source === selectedNodeData.id ? e.target : e.source;
-                    const connectedNode = nodes.find(n => n.id === connectedId);
-                    if (!connectedNode) return null;
-                    return (
-                      <View key={i} style={styles.detailsTag}>
-                        <View style={[styles.detailsTagDot, { backgroundColor: getNodeColor(connectedNode.type) }]} />
-                        <Text style={styles.detailsTagText}>{connectedNode.label}</Text>
-                      </View>
-                    );
-                  })}
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
-
-      <Text style={styles.legendTip}>Tap any node to explore connections</Text>
-    </View>
+    </GestureDetector>
   );
 };
 
-export const HealthGraphCard: React.FC<HealthGraphCardProps> = ({ onViewGraph }) => {
-  const { nodes, edges } = GRAPH_DATA;
-  const [showGraphModal, setShowGraphModal] = useState(false);
+// --- MAIN COMPONENT ---
+export const HealthGraphCard = ({ autoOpen = false }: { autoOpen?: boolean }) => {
+  const [showModal, setShowModal] = useState(autoOpen);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
 
-  const symptoms = nodes.filter(n => n.type === 'symptom');
-  const facts = nodes.filter(n => n.type === 'fact');
-  const diseases = nodes.filter(n => n.type === 'disease');
+  useEffect(() => {
+    if (autoOpen) {
+      setShowModal(true);
+    }
+  }, [autoOpen]);
 
-  const handleViewGraph = () => {
-    setShowGraphModal(true);
-    if (onViewGraph) onViewGraph();
-  };
+  const totalNodes = GRAPH_DATA.nodes.length;
+  const totalRelationships = GRAPH_DATA.edges.length;
 
   return (
     <>
-      <TouchableOpacity style={styles.cardContainer} onPress={handleViewGraph} activeOpacity={0.8}>
-        <LinearGradient
-          colors={['#0474FC', '#0360D0']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientCard}
-        >
-          <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="git-network-outline" size={24} color="#FFFFFF" />
+      <TouchableOpacity style={styles.card} onPress={() => setShowModal(true)} activeOpacity={0.9}>
+        <LinearGradient colors={['#181822', '#0F0F13']} style={styles.cardGradient}>
+          <View style={styles.cardHeader}>
+            <View style={styles.iconBox}>
+              <Ionicons name="git-network" size={20} color={COLORS.nodes.patient} />
             </View>
-            <Text style={styles.title}>Health Network</Text>
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{nodes.length} Nodes</Text>
+            <Text style={styles.cardTitle}>Health Graph</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{totalNodes} nodes</Text>
             </View>
           </View>
-
+          
           <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <View style={[styles.statDot, { backgroundColor: COLORS.node.symptom }]} />
-              <Text style={styles.statValue}>{symptoms.length}</Text>
-              <Text style={styles.statLabel}>Symptoms</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={[styles.statDot, { backgroundColor: COLORS.node.fact }]} />
-              <Text style={styles.statValue}>{facts.length}</Text>
-              <Text style={styles.statLabel}>Facts</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={[styles.statDot, { backgroundColor: COLORS.node.disease }]} />
-              <Text style={styles.statValue}>{diseases.length}</Text>
-              <Text style={styles.statLabel}>Conditions</Text>
-            </View>
-            <View style={styles.statItem}>
-              <View style={[styles.statDot, { backgroundColor: COLORS.primary }]} />
-              <Text style={styles.statValue}>{edges.length}</Text>
-              <Text style={styles.statLabel}>Connections</Text>
-            </View>
+            <Text style={styles.statText}>
+              <Text style={{color: '#FFF'}}>{totalRelationships}</Text> relationships tracked
+            </Text>
+            <Ionicons name="pulse" size={16} color={COLORS.nodes.disease} />
           </View>
 
-          <View style={styles.previewContainer}>
-            <View style={styles.previewNodes}>
-              <View style={styles.previewEdge}>
-                <View style={[styles.previewNode, { backgroundColor: COLORS.node.user }]}>
-                  <Text style={styles.previewNodeText}>You</Text>
-                </View>
-                <View style={styles.previewArrow}>
-                  <Ionicons name="arrow-forward" size={12} color="rgba(255,255,255,0.6)" />
-                </View>
-                <View style={[styles.previewNode, { backgroundColor: COLORS.node.symptom }]}>
-                  <Text style={styles.previewNodeText}>Symptoms</Text>
-                </View>
-                <View style={styles.previewArrow}>
-                  <Ionicons name="arrow-forward" size={12} color="rgba(255,255,255,0.6)" />
-                </View>
-                <View style={[styles.previewNode, { backgroundColor: COLORS.node.fact }]}>
-                  <Text style={styles.previewNodeText}>Facts</Text>
-                </View>
+          {/* AI Insight Summary Block - Same as Family Card */}
+          <View style={styles.aiInsightBox}>
+            <View style={styles.aiInsightHeader}>
+              <MaterialCommunityIcons name="robot-outline" size={16} color={COLORS.nodes.patient} />
+              <Text style={styles.aiInsightTitle}>AI Insight</Text>
+              <View style={{flex: 1}} />
+              <View style={styles.confidenceBadge}>
+                <Text style={styles.confidenceText}>92% Match</Text>
               </View>
             </View>
-            <View style={styles.viewMoreContainer}>
-              <Text style={styles.viewMoreText}>Tap to explore your health network →</Text>
-            </View>
+            <Text style={styles.aiInsightText}>
+              Strong correlation between <Text style={{color: '#FFF', fontWeight: '600'}}>sedentary lifestyle</Text> and <Text style={{color: '#FFF', fontWeight: '600'}}>obesity</Text>. 
+              Regular walking and vitamin D supplementation recommended.
+            </Text>
           </View>
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Graph Modal */}
-      <Modal visible={showGraphModal} animationType="slide" transparent={false}>
-        <SafeAreaView style={styles.modalContainer}>
+      <Modal visible={showModal} animationType="fade" transparent={false}>
+        <SafeAreaView style={styles.modal}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowGraphModal(false)} style={styles.modalCloseButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              <Text style={styles.modalCloseText}>Back</Text>
+            <TouchableOpacity onPress={() => setShowModal(false)} style={styles.modalBack}>
+              <Ionicons name="close" size={24} color="#FFF" />
+              <Text style={styles.modalBackText}>Close</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Health Network</Text>
-            <TouchableOpacity onPress={() => setShowGraphModal(false)}>
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Indresh's Network</Text>
+            <View style={{width: 60}} /> 
           </View>
-
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            <GraphVisualization nodes={nodes} edges={edges} />
-
-            <View style={styles.modalStats}>
-              <View style={styles.modalStatItem}>
-                <View style={[styles.modalStatDot, { backgroundColor: COLORS.node.symptom }]} />
-                <Text style={styles.modalStatValue}>{symptoms.length}</Text>
-                <Text style={styles.modalStatLabel}>Symptoms</Text>
-              </View>
-              <View style={styles.modalStatItem}>
-                <View style={[styles.modalStatDot, { backgroundColor: COLORS.node.fact }]} />
-                <Text style={styles.modalStatValue}>{facts.length}</Text>
-                <Text style={styles.modalStatLabel}>Health Facts</Text>
-              </View>
-              <View style={styles.modalStatItem}>
-                <View style={[styles.modalStatDot, { backgroundColor: COLORS.node.disease }]} />
-                <Text style={styles.modalStatValue}>{diseases.length}</Text>
-                <Text style={styles.modalStatLabel}>Conditions</Text>
-              </View>
+          
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: COLORS.bg, overflow: 'hidden' }}>
+            <GraphView data={GRAPH_DATA} onNodeSelect={setSelectedNode} />
+            
+            {/* Top Confidence Banner */}
+            <View style={styles.modalTopBanner}>
+              <MaterialCommunityIcons name="shield-check" size={18} color={'#10B981'} />
+              <Text style={styles.bannerText}>AI Confidence Score: <Text style={{color: '#FFF'}}>92%</Text></Text>
             </View>
 
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>🔴 Symptoms</Text>
-              {symptoms.map(node => (
-                <View key={node.id} style={[styles.modalNodeCard, { borderLeftColor: node.color }]}>
-                  <Text style={styles.modalNodeLabel}>{node.label}</Text>
-                  {node.severity && (
-                    <Text style={styles.modalNodeMeta}>Severity: {node.severity}/10</Text>
-                  )}
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>📋 Health Facts</Text>
-              {facts.map(node => (
-                <View key={node.id} style={[styles.modalNodeCard, { borderLeftColor: node.color }]}>
-                  <Text style={styles.modalNodeLabel}>{node.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>⚕️ Conditions</Text>
-              {diseases.map(node => (
-                <View key={node.id} style={[styles.modalNodeCard, { borderLeftColor: node.color }]}>
-                  <Text style={styles.modalNodeLabel}>{node.label}</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>🔗 All Connections</Text>
-              {edges.map((edge, index) => {
-                const source = nodes.find(n => n.id === edge.source);
-                const target = nodes.find(n => n.id === edge.target);
-                if (!source || !target) return null;
-                return (
-                  <View key={index} style={styles.modalEdgeCard}>
-                    <View style={styles.modalEdgeRow}>
-                      <View style={[styles.modalEdgeNode, { borderColor: source.color || '#999' }]}>
-                        <Text style={styles.modalEdgeNodeText}>{source.label}</Text>
-                      </View>
-                      <View style={styles.modalEdgeArrow}>
-                        <Text style={styles.modalEdgeLabel}>{edge.label}</Text>
-                        <Ionicons name="arrow-forward" size={14} color={COLORS.text.light} />
-                      </View>
-                      <View style={[styles.modalEdgeNode, { borderColor: target.color || '#999' }]}>
-                        <Text style={styles.modalEdgeNodeText}>{target.label}</Text>
-                      </View>
-                    </View>
+            {/* Obsidian-Style Info Panel */}
+            {selectedNode && (
+              <View style={styles.detailsPanel}>
+                <View style={styles.panelHeader}>
+                  <View style={[styles.detailsDot, { backgroundColor: COLORS.nodes[selectedNode.type as keyof typeof COLORS.nodes] || COLORS.nodes.category }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.detailsTitle}>{selectedNode.label}</Text>
+                    <Text style={styles.detailsType}>{selectedNode.type.toUpperCase()}</Text>
                   </View>
-                );
-              })}
+                  <TouchableOpacity onPress={() => setSelectedNode(null)}>
+                    <Ionicons name="close-circle" size={26} color={COLORS.text.secondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            
+            <View style={styles.hintBadge}>
+              <Text style={styles.hintText}>Pinch to zoom • Drag to pan</Text>
             </View>
-          </ScrollView>
+          </GestureHandlerRootView>
         </SafeAreaView>
       </Modal>
     </>
@@ -535,382 +520,55 @@ export const HealthGraphCard: React.FC<HealthGraphCardProps> = ({ onViewGraph })
 };
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#0474FC',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  gradientCard: {
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    flex: 1,
-  },
-  badgeContainer: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 16,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  statLabel: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  previewContainer: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    padding: 12,
-  },
-  previewNodes: {
-    gap: 6,
-  },
-  previewEdge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  previewNode: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    minWidth: 50,
-    alignItems: 'center',
-  },
-  previewNodeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  previewArrow: {
-    alignItems: 'center',
-  },
-  viewMoreContainer: {
-    alignItems: 'center',
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
-  },
-  viewMoreText: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 11,
-  },
-  graphContainer: {
-    paddingVertical: 16,
-    backgroundColor: COLORS.background,
-    borderRadius: 16,
-  },
-  graphWrapper: {
-    paddingHorizontal: 20,
-  },
-  legendContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  legendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 10,
-    color: COLORS.text.secondary,
-  },
-  legendTip: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: COLORS.text.light,
-    paddingVertical: 8,
-    fontStyle: 'italic',
-  },
-  detailsPanel: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    backgroundColor: COLORS.card,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  detailsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  detailsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailsInitial: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  detailsInfo: {
-    flex: 1,
-  },
-  detailsTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.text.primary,
-  },
-  detailsType: {
-    fontSize: 12,
-    color: COLORS.text.secondary,
-  },
-  detailsBody: {
-    marginTop: 12,
-    gap: 8,
-  },
-  detailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailsLabel: {
-    fontSize: 12,
-    color: COLORS.text.secondary,
-  },
-  detailsValue: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.text.primary,
-  },
-  detailsBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  detailsBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#D97706',
-  },
-  detailsConnections: {
-    marginTop: 4,
-  },
-  detailsTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
-  },
-  detailsTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  detailsTagDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  detailsTagText: {
-    fontSize: 10,
-    color: COLORS.text.secondary,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  modalHeader: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  modalCloseButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  modalCloseText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  modalContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 40,
-  },
-  modalStats: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.card,
-    padding: 16,
-    borderRadius: 12,
-    justifyContent: 'space-around',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  modalStatItem: {
-    alignItems: 'center',
-  },
-  modalStatDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginBottom: 4,
-  },
-  modalStatValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.text.primary,
-  },
-  modalStatLabel: {
-    fontSize: 10,
-    color: COLORS.text.secondary,
-  },
-  modalSection: {
-    backgroundColor: COLORS.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  modalSectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text.primary,
-    marginBottom: 12,
-  },
-  modalNodeCard: {
-    padding: 12,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 8,
-    marginBottom: 8,
-    borderLeftWidth: 4,
-  },
-  modalNodeLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: COLORS.text.primary,
-  },
-  modalNodeMeta: {
-    fontSize: 11,
-    color: COLORS.text.secondary,
-    marginTop: 2,
-  },
-  modalEdgeCard: {
-    backgroundColor: '#F9FAFB',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 6,
-  },
-  modalEdgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalEdgeNode: {
-    borderWidth: 1.5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  modalEdgeNodeText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: COLORS.text.primary,
-  },
-  modalEdgeArrow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  modalEdgeLabel: {
-    fontSize: 9,
-    color: COLORS.text.secondary,
-  },
+  card: { 
+    marginHorizontal: 16, 
+    marginTop: 16, 
+    borderRadius: 16, 
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: COLORS.border 
+  },
+  cardGradient: { padding: 20 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(56, 189, 248, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: '#FFF', flex: 1 },
+  badge: { backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: COLORS.border },
+  badgeText: { color: COLORS.text.secondary, fontSize: 11, fontWeight: '600' },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  statText: { color: COLORS.text.secondary, fontSize: 13, fontWeight: '500' },
+  
+  // AI Insight Box - Same as Family Card
+  aiInsightBox: { 
+    backgroundColor: 'rgba(56, 189, 248, 0.08)', 
+    padding: 16, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: 'rgba(56, 189, 248, 0.2)' 
+  },
+  aiInsightHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  aiInsightTitle: { color: COLORS.nodes.patient, fontSize: 13, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase' },
+  confidenceBadge: { backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(16, 185, 129, 0.2)' },
+  confidenceText: { color: '#10B981', fontSize: 10, fontWeight: '700' },
+  aiInsightText: { color: COLORS.text.secondary, fontSize: 13, lineHeight: 20 },
+  
+  graphContainer: { flex: 1, backgroundColor: COLORS.bg },
+  loadingContainer: { flex: 1, backgroundColor: COLORS.bg, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  loadingText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600', marginTop: 20 },
+  loadingSubText: { color: COLORS.text.secondary, fontSize: 13, marginTop: 8 },
+  modal: { flex: 1, backgroundColor: COLORS.bg },
+  modalHeader: { backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: COLORS.border, zIndex: 10 },
+  modalBack: { flexDirection: 'row', alignItems: 'center', gap: 6, width: 80 },
+  modalBackText: { color: '#FFF', fontSize: 16, fontWeight: '500' },
+  modalTitle: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  modalTopBanner: { position: 'absolute', top: 16, alignSelf: 'center', backgroundColor: 'rgba(17,17,17,0.8)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: COLORS.border },
+  bannerText: { color: COLORS.text.secondary, fontSize: 12, fontWeight: '600' },
+  detailsPanel: { position: 'absolute', bottom: 40, left: 20, right: 20, backgroundColor: 'rgba(17,17,17,0.95)', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: COLORS.border },
+  panelHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  detailsDot: { width: 14, height: 14, borderRadius: 7, marginTop: 4, shadowColor: '#FFF', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8 },
+  detailsTitle: { fontSize: 20, fontWeight: '700', color: '#FFF', marginBottom: 2 },
+  detailsType: { fontSize: 12, color: COLORS.text.secondary, letterSpacing: 1, fontWeight: '600' },
+  hintBadge: { position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  hintText: { color: COLORS.text.secondary, fontSize: 12, fontWeight: '600' }
 });
 
 export default HealthGraphCard;

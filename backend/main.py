@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth, profiles, chat, health_graph, health_chat
+from routes import auth, profiles, chat, health_graph, health_chat, meds
 import os
 
 app = FastAPI(
@@ -36,6 +36,7 @@ app.include_router(profiles.router)
 app.include_router(chat.router)
 app.include_router(health_graph.router)
 app.include_router(health_chat.router)
+app.include_router(meds.router)
 
 @app.get("/")
 async def root():

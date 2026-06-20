@@ -1,11 +1,15 @@
 // app/components/profile/RiskScoreCard.tsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
   Dimensions,
+  TextInput,
+  LayoutAnimation,
+  Platform,
+  UIManager,
+  Pressable,
 } from 'react-native';
 import { Svg, Circle, G, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import Animated, {
@@ -14,25 +18,31 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSequence,
+  withDelay,
   Easing,
+  interpolateColor,
 } from 'react-native-reanimated';
 
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const { width } = Dimensions.get('window');
-const SIZE = Math.min(width * 0.3, 140);
-const STROKE_WIDTH = 12;
+const SIZE = Math.min(width * 0.35, 150); // Slightly larger for better readability
+const STROKE_WIDTH = 14;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = RADIUS * 2 * Math.PI;
 const CENTER = SIZE / 2;
 
-// Semi-circle only (180 degrees)
 const SEMI_CIRCUMFERENCE = CIRCUMFERENCE * 0.5;
-const START_ANGLE = 180; // Start from left
+const START_ANGLE = 180;
 
 const COLORS = {
   card: '#FFFFFF',
   text: {
     primary: '#111827',
-    secondary: '#6B7280',
+    secondary: '#4B5563', // Darkened slightly for better contrast
     light: '#9CA3AF',
   },
   risk: {
@@ -41,10 +51,12 @@ const COLORS = {
     elevated: '#F97316',
     high: '#EF4444',
   },
+  track: '#F3F4F6', // Softer track color
 };
 
-// Create Animated Circle component with Reanimated
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface Factor {
   text: string;
@@ -52,8 +64,8 @@ interface Factor {
 }
 
 interface RiskScoreCardProps {
-  score: number;
-  riskLevel: string;
+  score?: number;
+  riskLevel?: string;
   description?: string;
   factors?: Factor[];
   onLongPress?: () => void;
@@ -64,33 +76,27 @@ interface RiskScoreCardProps {
 
 export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
   score = 58,
-  riskLevel = 'Moderate Risk',
   description = 'Your health risk score is moderate. Regular monitoring and healthy habits are recommended.',
   factors = [
-    { text: 'Chronic headache history', color: '#F59E0B' },
-    { text: 'High stress levels', color: '#F59E0B' },
-    { text: 'Regular exercise routine', color: '#10B981' },
-    { text: 'Family history of cardiovascular disease', color: '#EF4444' },
-    { text: 'Sedentary lifestyle', color: '#F97316' },
+    { text: 'Chronic headache history', color: COLORS.risk.moderate },
+    { text: 'High stress levels', color: COLORS.risk.moderate },
+    { text: 'Regular exercise routine', color: COLORS.risk.low },
+    { text: 'Family cardiovascular history', color: COLORS.risk.high },
+    { text: 'Sedentary lifestyle', color: COLORS.risk.elevated },
   ],
   onLongPress,
   timestamp = 'Last updated: Today, 2:30 PM',
   nextAssessment = 'Next assessment: In 14 days',
   trend = 'stable',
 }) => {
-  const [displayScore, setDisplayScore] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [hasAnimated, setHasAnimated] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Reanimated shared values
+  // Reanimated Shared Values
   const progress = useSharedValue(0);
-  const glowAngle = useSharedValue(START_ANGLE);
-  const pulseValue = useSharedValue(1);
   const scaleValue = useSharedValue(1);
+  const pulseValue = useSharedValue(1);
 
+  // Helper to determine active color
   const getColor = (value: number) => {
     if (value < 30) return COLORS.risk.low;
     if (value < 50) return COLORS.risk.moderate;
@@ -98,142 +104,70 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
     return COLORS.risk.high;
   };
 
-  const color = getColor(score);
+  const activeColor = getColor(score);
 
-  // 1. Animated props for progress ring
+  useEffect(() => {
+    // Mount Animation
+    progress.value = withDelay(
+      300,
+      withTiming(score, {
+        duration: 2000,
+        easing: Easing.bezier(0.25, 1, 0.5, 1), // Smoother, more natural easing curve
+      })
+    );
+
+    pulseValue.value = withDelay(
+      2300,
+      withSequence(
+        withTiming(1.3, { duration: 400, easing: Easing.out(Easing.ease) }),
+        withTiming(1, { duration: 400, easing: Easing.in(Easing.ease) })
+      )
+    );
+  }, [score, progress, pulseValue]);
+
+  // UI-Thread Text Animation (Eliminates setInterval completely)
+  const animatedTextProps = useAnimatedProps(() => {
+    return {
+      text: `${Math.round(progress.value)}`,
+    } as any; // Cast to any to bypass strict TS type for the 'text' prop trick on TextInput
+  });
+
   const progressAnimatedProps = useAnimatedProps(() => {
     const currentProgress = (progress.value / 100) * SEMI_CIRCUMFERENCE;
-    const offset = SEMI_CIRCUMFERENCE - currentProgress;
     return {
-      strokeDashoffset: offset,
+      strokeDashoffset: SEMI_CIRCUMFERENCE - currentProgress,
     };
   });
 
-  // 2. Animated props for glow dot position
   const glowDotProps = useAnimatedProps(() => {
-    const angleRad = (glowAngle.value * Math.PI) / 180;
-    const x = CENTER + RADIUS * Math.cos(angleRad);
-    const y = CENTER + RADIUS * Math.sin(angleRad);
+    const angleRad = ((START_ANGLE + (progress.value / 100) * 180) * Math.PI) / 180;
     return {
-      cx: x,
-      cy: y,
+      cx: CENTER + RADIUS * Math.cos(angleRad),
+      cy: CENTER + RADIUS * Math.sin(angleRad),
     };
   });
 
-  // 3. Animated props for pulse ring
   const pulseAnimatedProps = useAnimatedProps(() => ({
-    opacity: pulseValue.value * 0.15,
-    r: RADIUS + pulseValue.value * 4,
+    opacity: pulseValue.value > 1 ? 0.2 : 0,
+    r: RADIUS + (pulseValue.value - 1) * 20,
   }));
 
-  // 4. Animated style for scale
-  const animatedStyle = useAnimatedStyle(() => ({
+  const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleValue.value }],
   }));
 
-  // 5. Animate score counter using setInterval
-  const animateScore = (target: number) => {
-    const duration = 2000;
-    const steps = 60;
-    const increment = target / steps;
-    let current = 0;
-    let step = 0;
-
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    intervalRef.current = setInterval(() => {
-      step++;
-      current = Math.min(current + increment, target);
-      setDisplayScore(Math.round(current));
-
-      if (step >= steps) {
-        setDisplayScore(target);
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-      }
-    }, duration / steps);
-
-    return intervalRef.current;
-  };
-
-  const startAnimation = () => {
-    if (isAnimating || hasAnimated) return;
-
-    setIsAnimating(true);
-    setDisplayScore(0);
-    setHasAnimated(true);
-    progress.value = 0;
-    glowAngle.value = START_ANGLE;
-    pulseValue.value = 1;
-
-    // Animate progress ring from 0 to target score
-    progress.value = withTiming(score, {
-      duration: 2000,
-      easing: Easing.out(Easing.quad),
-    });
-
-    // Animate glow angle from start to target position
-    const targetAngle = START_ANGLE + (score / 100) * 180;
-    glowAngle.value = withTiming(targetAngle, {
-      duration: 2000,
-      easing: Easing.out(Easing.quad),
-    });
-
-    // Animate score counter using setInterval
-    animateScore(score);
-
-    // Pulse on completion
-    timeoutRef.current = setTimeout(() => {
-      pulseValue.value = withSequence(
-        withTiming(1.4, { duration: 400 }),
-        withTiming(1, { duration: 400 }),
-        withTiming(1.2, { duration: 300 }),
-        withTiming(1, { duration: 300 })
-      );
-      setIsAnimating(false);
-    }, 2100);
-  };
-
-  // Run animation only once on mount
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      startAnimation();
-    }, 300);
-
-    return () => {
-      clearTimeout(timer);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, []);
-
-  const handlePress = () => {
-    // Just a press handler without animation replay
-    // Could be used for navigation or other actions
-    console.log('Card pressed - showing details');
-    // You could add navigation or other actions here
-  };
-
   const handlePressIn = () => {
-    scaleValue.value = withTiming(0.96, { duration: 150, easing: Easing.out(Easing.quad) });
+    scaleValue.value = withTiming(0.97, { duration: 150 });
   };
 
   const handlePressOut = () => {
-    scaleValue.value = withTiming(1, { duration: 150, easing: Easing.out(Easing.quad) });
+    scaleValue.value = withTiming(1, { duration: 200, easing: Easing.bounce });
   };
 
   const handleLongPress = () => {
-    setShowDetails(prev => !prev);
+    // Smoothly expand/collapse the layout native to the platform
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowDetails((prev) => !prev);
     if (onLongPress) onLongPress();
   };
 
@@ -246,45 +180,33 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
 
   const riskLabel = getRiskLabel();
 
-  const getTrendIcon = () => {
-    if (trend === 'up') return '↑';
-    if (trend === 'down') return '↓';
-    return '→';
-  };
-
-  const getTrendColor = () => {
-    if (trend === 'up') return COLORS.risk.high;
-    if (trend === 'down') return COLORS.risk.low;
-    return COLORS.text.light;
-  };
-
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={handlePress}
+    <AnimatedPressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onLongPress={handleLongPress}
-      delayLongPress={500}
+      delayLongPress={400} // Slightly faster recognition
+      style={[styles.container, animatedCardStyle]}
     >
-      <Animated.View style={[styles.container, animatedStyle]}>
-        <View style={styles.gaugeContainer}>
-          <Svg width={SIZE} height={SIZE * 0.65} viewBox={`0 0 ${SIZE} ${SIZE * 0.65}`}>
+      <View style={styles.contentRow}>
+        {/* Left: Gauge */}
+        <View style={styles.gaugeWrapper}>
+          <Svg width={SIZE} height={SIZE * 0.6} viewBox={`0 0 ${SIZE} ${SIZE * 0.6}`}>
             <Defs>
               <LinearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <Stop offset="0%" stopColor={COLORS.risk.low} />
-                <Stop offset="33%" stopColor={COLORS.risk.moderate} />
-                <Stop offset="66%" stopColor={COLORS.risk.elevated} />
+                <Stop offset="40%" stopColor={COLORS.risk.moderate} />
+                <Stop offset="70%" stopColor={COLORS.risk.elevated} />
                 <Stop offset="100%" stopColor={COLORS.risk.high} />
               </LinearGradient>
             </Defs>
 
-            {/* Background Semi-Circle */}
+            {/* Background Track */}
             <Circle
               cx={CENTER}
               cy={CENTER}
               r={RADIUS}
-              stroke="#E5E7EB"
+              stroke={COLORS.track}
               strokeWidth={STROKE_WIDTH}
               fill="none"
               strokeDasharray={`${SEMI_CIRCUMFERENCE} ${CIRCUMFERENCE}`}
@@ -293,7 +215,7 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
               transform={`rotate(${START_ANGLE}, ${CENTER}, ${CENTER})`}
             />
 
-            {/* Progress Semi-Circle - Animated */}
+            {/* Animated Progress */}
             <AnimatedCircle
               cx={CENTER}
               cy={CENTER}
@@ -307,112 +229,78 @@ export const RiskScoreCard: React.FC<RiskScoreCardProps> = ({
               transform={`rotate(${START_ANGLE}, ${CENTER}, ${CENTER})`}
             />
 
-            {/* Glow Dot - Travels along the arc */}
-            <AnimatedCircle
-              r={5}
-              fill={color}
-              opacity={0.9}
-              animatedProps={glowDotProps}
-            />
-
-            {/* Glow Ring behind the dot */}
-            <AnimatedCircle
-              r={10}
-              fill={color}
-              opacity={0.2}
-              animatedProps={glowDotProps}
-            />
-
-            {/* Completion Pulse Ring */}
+            {/* Completion Pulse */}
             <AnimatedCircle
               cx={CENTER}
               cy={CENTER}
-              r={RADIUS + 4}
-              stroke={color}
-              strokeWidth={2}
               fill="none"
-              strokeDasharray={`${SEMI_CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+              stroke={activeColor}
+              strokeWidth={2}
               animatedProps={pulseAnimatedProps}
-              transform={`rotate(${START_ANGLE}, ${CENTER}, ${CENTER})`}
             />
 
-            {/* Center Score */}
-            <G>
-              <SvgText
-                x={CENTER}
-                y={CENTER - 8}
-                textAnchor="middle"
-                fontSize={Math.min(SIZE * 0.2, 24)}
-                fontWeight="800"
-                fill={COLORS.text.primary}
-                letterSpacing="0.5"
-              >
-                {displayScore}
-              </SvgText>
-              <SvgText
-                x={CENTER}
-                y={CENTER + 16}
-                textAnchor="middle"
-                fontSize={Math.min(SIZE * 0.08, 10)}
-                fontWeight="500"
-                fill={COLORS.text.secondary}
-                letterSpacing="0.8"
-              >
-                RISK SCORE
-              </SvgText>
-            </G>
+            {/* Leading Glow Dot */}
+            <AnimatedCircle r={STROKE_WIDTH / 2.5} fill="#FFF" animatedProps={glowDotProps} />
+            <AnimatedCircle r={STROKE_WIDTH} fill={activeColor} opacity={0.3} animatedProps={glowDotProps} />
           </Svg>
 
-          {/* Risk Level Label */}
-          <View style={styles.riskLabelContainer}>
-            <View style={[styles.riskDot, { backgroundColor: riskLabel.color }]} />
-            <Text style={[styles.riskLabelText, { color: riskLabel.color }]}>
-              {riskLabel.label}
-            </Text>
-            <Text style={[styles.trendIndicator, { color: getTrendColor() }]}>
-              {getTrendIcon()}
-            </Text>
+          {/* Absolute Centered Text Wrapper to perfectly align the TextInput */}
+          <View style={styles.scoreTextContainer}>
+            <AnimatedTextInput
+              underlineColorAndroid="transparent"
+              editable={false}
+              animatedProps={animatedTextProps}
+              style={styles.scoreText}
+            />
+            <Text style={styles.scoreLabel}>RISK SCORE</Text>
+          </View>
+
+          {/* Badge */}
+          <View style={styles.badgeContainer}>
+            <View style={[styles.riskBadge, { backgroundColor: `${riskLabel.color}15` }]}>
+              <View style={[styles.riskDot, { backgroundColor: riskLabel.color }]} />
+              <Text style={[styles.riskBadgeText, { color: riskLabel.color }]}>
+                {riskLabel.label}
+              </Text>
+              <Text style={[styles.trendIcon, { color: riskLabel.color }]}>
+                {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.detailsContainer}>
-          <Text style={styles.riskDescription}>{description}</Text>
+        {/* Right: Details */}
+        <View style={styles.detailsWrapper}>
+          <Text style={styles.descriptionText}>{description}</Text>
 
-          {showDetails ? (
-            <View style={styles.factorsContainer}>
-              {factors.map((factor, index) => (
-                <View key={index} style={styles.factorItem}>
-                  <View style={[styles.factorDot, { backgroundColor: factor.color }]} />
-                  <Text style={styles.factorText}>{factor.text}</Text>
-                </View>
-              ))}
-              <View style={styles.metadataContainer}>
-                <Text style={styles.metadataText}>{timestamp}</Text>
-                <Text style={styles.metadataText}>{nextAssessment}</Text>
+          <View style={styles.factorsList}>
+            {(showDetails ? factors : factors.slice(0, 2)).map((factor, index) => (
+              <View key={index} style={styles.factorItem}>
+                <View style={[styles.factorDot, { backgroundColor: factor.color }]} />
+                <Text style={styles.factorText} numberOfLines={showDetails ? 2 : 1}>
+                  {factor.text}
+                </Text>
               </View>
-              <View style={styles.hintText}>
-                <Text style={styles.hintTextStyle}>Long press to hide details</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.factorsPreview}>
-              {factors.slice(0, 2).map((factor, index) => (
-                <View key={index} style={styles.factorPreviewItem}>
-                  <View style={[styles.factorDot, { backgroundColor: factor.color }]} />
-                  <Text style={styles.factorPreviewText}>{factor.text}</Text>
-                </View>
-              ))}
-              {factors.length > 2 && (
-                <Text style={styles.moreText}>+{factors.length - 2} more factors</Text>
-              )}
-              <View style={styles.hintText}>
-                <Text style={styles.hintTextStyle}>Long press for details</Text>
-              </View>
-            </View>
-          )}
+            ))}
+
+            {!showDetails && factors.length > 2 && (
+              <Text style={styles.moreText}>+{factors.length - 2} more</Text>
+            )}
+          </View>
         </View>
-      </Animated.View>
-    </TouchableOpacity>
+      </View>
+
+      {/* Expanded Metadata Footer */}
+      {showDetails && (
+        <View style={styles.footer}>
+          <View style={styles.divider} />
+          <View style={styles.footerRow}>
+            <Text style={styles.metadataText}>{timestamp}</Text>
+            <Text style={styles.metadataText}>{nextAssessment}</Text>
+          </View>
+        </View>
+      )}
+    </AnimatedPressable>
   );
 };
 
@@ -421,60 +309,95 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     marginHorizontal: 16,
     marginTop: 16,
-    padding: 16,
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 4,
-    minHeight: 130,
+    paddingTop: 20,
+    padding: 20,
+    borderRadius: 24, // Rounder, modern shape
+    ...Platform.select({
+      ios: {
+        shadowColor: '#111827',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  gaugeContainer: {
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
+  gaugeWrapper: {
+    alignItems: 'center',
+    width: SIZE,
+  },
+  scoreTextContainer: {
+    position: 'absolute',
+    top: SIZE * 0.25,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    width: '100%',
   },
-  riskLabelContainer: {
+  scoreText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: COLORS.text.primary,
+    padding: 0,
+    margin: 0,
+    includeFontPadding: false,
+    textAlign: 'center',
+  },
+  scoreLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.text.light,
+    letterSpacing: 1,
+    marginTop: -2,
+  },
+  badgeContainer: {
+    marginTop: -4,
+  },
+  riskBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 6,
   },
   riskDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
   },
-  riskLabelText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-  trendIndicator: {
-    fontSize: 12,
+  riskBadgeText: {
+    fontSize: 11,
     fontWeight: '700',
-    marginLeft: 2,
+    letterSpacing: 0.3,
   },
-  detailsContainer: {
-    flex: 1,
-  },
-  riskDescription: {
+  trendIcon: {
     fontSize: 12,
-    color: COLORS.text.secondary,
-    lineHeight: 16,
-    marginBottom: 6,
+    fontWeight: '800',
   },
-  factorsContainer: {
-    gap: 4,
-    marginTop: 2,
+  detailsWrapper: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  descriptionText: {
+    fontSize: 13,
+    color: COLORS.text.secondary,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  factorsList: {
+    gap: 6,
   },
   factorItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   factorDot: {
     width: 6,
@@ -482,42 +405,34 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   factorText: {
-    fontSize: 11,
+    fontSize: 12,
     color: COLORS.text.secondary,
-  },
-  factorsPreview: {
-    gap: 3,
-  },
-  factorPreviewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  factorPreviewText: {
-    fontSize: 11,
-    color: COLORS.text.secondary,
+    flex: 1,
   },
   moreText: {
-    fontSize: 10,
+    fontSize: 11,
+    fontWeight: '600',
     color: COLORS.text.light,
     marginTop: 2,
+    marginLeft: 14,
   },
-  hintText: {
-    marginTop: 4,
+  footer: {
+    marginTop: 16,
   },
-  hintTextStyle: {
-    fontSize: 9,
-    color: COLORS.text.light,
-    letterSpacing: 0.5,
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.track,
+    marginBottom: 12,
   },
-  metadataContainer: {
-    marginTop: 6,
-    gap: 2,
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   metadataText: {
-    fontSize: 9,
+    fontSize: 11,
     color: COLORS.text.light,
-    letterSpacing: 0.3,
+    fontWeight: '500',
   },
 });
 

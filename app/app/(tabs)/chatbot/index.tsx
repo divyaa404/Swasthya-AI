@@ -29,6 +29,7 @@ import { backendService } from '@/services/backend.service';
 import { BACKEND_URL, API_ENDPOINTS } from '@/config/api';
 import Voice from '@react-native-voice/voice';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AgentLog } from '@/components/chatbot/AgentLog';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -137,6 +138,7 @@ export default function ChatScreen() {
 
   // History states
   const [showHistory, setShowHistory] = useState(false);
+  const [showAgentLog, setShowAgentLog] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
   const slideAnim = useRef(new Animated.Value(0)).current;
   const { width: screenWidth } = Dimensions.get('window');
@@ -495,7 +497,7 @@ export default function ChatScreen() {
     };
     setMessages(prev => [...prev, userMessage]);
 
-    const sessionId = 'session-' + (user?.id || 'demo');
+    const sessionId = 'session-' + (user?.id || 'patient-123');
     const context = {
       rolling_summary: "Voice conversation session",
       profile_summary: "Voice onboarding",
@@ -509,12 +511,13 @@ export default function ChatScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patient_id: user?.id || 'demo-patient',
+          patient_id: user?.id || 'patient-123',
           session_id: sessionId,
           message: spokenText,
           patient_context: context,
         }),
       });
+      if (!response.ok) throw new Error("Backend connection issue");
       const data = await response.json();
       const reply = data.bot_reply || (voiceLang === 'hi-IN' ? getFallbackReplyHindi(spokenText) : getFallbackReply(spokenText));
       speakAIVoiceResponse(reply);
@@ -636,7 +639,7 @@ export default function ChatScreen() {
     setInputText('');
     setIsLoading(true);
 
-    const sessionId = 'session-' + (user?.id || 'demo');
+    const sessionId = 'session-' + (user?.id || 'patient-123');
     const context = {
       rolling_summary: "Initial onboarding conversation",
       profile_summary: "New patient onboarding",
@@ -649,13 +652,16 @@ export default function ChatScreen() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        patient_id: user?.id || 'demo-patient',
+        patient_id: user?.id || 'patient-123',
         session_id: sessionId,
         message: currentInput,
         patient_context: context,
       }),
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Backend connection issue");
+        return res.json();
+      })
       .then(data => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         const aiResponse: Message = {
@@ -683,20 +689,14 @@ export default function ChatScreen() {
   };
 
   const handleEndSession = async () => {
-    setIsLoading(true);
-    try {
-      await backendService.endSession(
-        user?.id || 'demo',
-        messages.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: m.text })),
-        ""
-      );
-      router.push('/(tabs)/home');
-    } catch (e) {
-      console.error("End session error:", e);
-      router.push('/(tabs)/home');
-    } finally {
-      setIsLoading(false);
-    }
+    setShowHistory(false);
+    setShowAgentLog(true);
+    // Execute backend call in background to prevent blocking during cold-starts
+    backendService.endSession(
+      user?.id || 'patient-123',
+      messages.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: m.text })),
+      ""
+    ).catch(e => console.error("End session error in background:", e));
   };
 
   const formatTime = (date: Date) => {
@@ -1081,6 +1081,13 @@ export default function ChatScreen() {
 
       {/* Voice Overlay */}
       {renderVoiceOverlay()}
+
+      {/* Agent Log Overlay */}
+      {showAgentLog && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <AgentLog onClose={() => setShowAgentLog(false)} />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -1095,7 +1102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 50,
     paddingBottom: 16,
     backgroundColor: '#171717',
     borderBottomWidth: 1,
@@ -1220,6 +1227,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
+    paddingBottom: 10,
     backgroundColor: '#171717',
     borderTopWidth: 1,
     borderTopColor: '#2D2D2D',
@@ -1295,7 +1303,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingTop: Platform.OS === 'ios' ? 12 : 52,
     paddingBottom: 16,
   },
   voiceCloseButton: {
@@ -1434,8 +1442,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingHorizontal: 6,
+    paddingTop: Platform.OS === 'ios' ? 32 : 42,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2D2D2D',
