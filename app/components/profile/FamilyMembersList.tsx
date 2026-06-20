@@ -1,6 +1,6 @@
 // app/components/profile/FamilyMembersList.tsx
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Linking, Modal, TouchableWithoutFeedback } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Linking, Modal, TouchableWithoutFeedback, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -38,8 +38,16 @@ interface FamilyMembersListProps {
   members: FamilyMember[];
 }
 
+interface CallAlertProps {
+  visible: boolean;
+  name: string;
+  phone: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
 // Custom Call Alert Component
-const CallAlert = ({ visible, name, phone, onConfirm, onCancel }) => {
+const CallAlert = ({ visible, name, phone, onConfirm, onCancel }: CallAlertProps) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableWithoutFeedback onPress={onCancel}>
@@ -169,7 +177,7 @@ export const FamilyMembersList: React.FC<FamilyMembersListProps> = ({ members })
               {member.phone && (
                 <TouchableOpacity 
                   style={styles.callButton} 
-                  onPress={() => showCallAlert(member.name, member.phone)}
+                  onPress={() => showCallAlert(member.name, member.phone!)}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="call" size={16} color="#FFFFFF" />

@@ -7,7 +7,7 @@ import { useSegments, router } from 'expo-router';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView, ScrollView, StatusBar, StyleSheet,
-  Text, TouchableOpacity, View, Alert, Modal, TextInput, Animated, Platform
+  Text, TouchableOpacity, View, Alert, Modal, TextInput, Animated, Platform, ActivityIndicator
 } from 'react-native';
 import { getMedicines, logMedAdherence, addMedicine } from '@/services/supabase.service';
 import { backendService } from '@/services/backend.service';
@@ -17,11 +17,25 @@ import * as Sharing from 'expo-sharing';
 import * as Location from 'expo-location';
 import { Linking } from 'react-native';
 import JanAushadhiMap from '@/components/JanAushadhiMap';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const ADHERENCE_DATA = [true, true, false, true, true, true, false];
 
-const FAKE_ANALYSIS = [
+const MEDICINES_DATABASE = [
+  { brand_name: 'Glycomet 500mg', generic_name: 'Metformin 500mg', market_price: 52, jan_aushadhi_price: 9.20 },
+  { brand_name: 'Metformin 500mg', generic_name: 'Metformin 500mg', market_price: 52, jan_aushadhi_price: 9.20 },
+  { brand_name: 'Amlokind 5mg', generic_name: 'Amlodipine 5mg', market_price: 48, jan_aushadhi_price: 5.50 },
+  { brand_name: 'Amlodipine 5mg', generic_name: 'Amlodipine 5mg', market_price: 48, jan_aushadhi_price: 5.50 },
+  { brand_name: 'Calcirol 60k', generic_name: 'Vitamin D3', market_price: 65, jan_aushadhi_price: 12.00 },
+  { brand_name: 'Vitamin D3', generic_name: 'Vitamin D3', market_price: 65, jan_aushadhi_price: 12.00 },
+  { brand_name: 'Crocin 650mg', generic_name: 'Paracetamol 650mg', market_price: 30, jan_aushadhi_price: 4.50 },
+  { brand_name: 'Paracetamol 650mg', generic_name: 'Paracetamol 650mg', market_price: 30, jan_aushadhi_price: 4.50 },
+  { brand_name: 'Ecosprin 75mg', generic_name: 'Aspirin 75mg', market_price: 28, jan_aushadhi_price: 3.80 },
+  { brand_name: 'Aspirin 75mg', generic_name: 'Aspirin 75mg', market_price: 28, jan_aushadhi_price: 3.80 }
+];
+
+const DATA_ANALYSIS = [
   { medicine: 'Metformin 500mg', status: 'safe', note: 'No known interactions with your current medications.', color: '#10B981', icon: 'checkmark-circle' },
   { medicine: 'Amlodipine 5mg', status: 'warning', note: 'Mild interaction possible with Aspirin — consult physician.', color: '#F59E0B', icon: 'warning' },
   { medicine: 'Vitamin D3', status: 'safe', note: 'OpenFDA: No adverse interactions detected.', color: '#10B981', icon: 'checkmark-circle' },
@@ -186,6 +200,8 @@ const AIAnalysisPanel = ({ visible, onClose, medName }: { visible: boolean; onCl
   );
 };
 
+import { BACKEND_URL } from '@/config/api';
+
 export default function MedsScreen() {
   const segments = useSegments();
   const currentRoute = segments[segments.length - 1];
@@ -199,13 +215,64 @@ export default function MedsScreen() {
   const [newMedName, setNewMedName] = useState('');
   const [genericAlts, setGenericAlts] = useState<any[]>([]);
 
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [userLocation, setUserLocation] = useState<{ lat: number, lon: number } | null>(null);
   const [nearbyStores, setNearbyStores] = useState<any[]>([]);
   const [isMapVisible, setIsMapVisible] = useState(false);
   const [findingStore, setFindingStore] = useState(false);
 
   const { user, patientId: storePatientId } = useAuthStore();
-  const patientId = user?.id || storePatientId || 'demo-patient';
+  const patientId = user?.id || storePatientId || 'patient-123';
+
+  // Debounced search for master medicines
+  useEffect(() => {
+    if (!newMedName.trim() || newMedName.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const delayDebounce = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const response = await fetch(`${BACKEND_URL}/meds/search?query=${encodeURIComponent(newMedName.trim())}`);
+        const data = await response.json();
+        if (data && data.status === 'success' && data.results) {
+          setSuggestions(data.results);
+        } else {
+          // Fallback search
+          const q = newMedName.toLowerCase();
+          const filtered = MEDICINES_DATABASE.filter(m => 
+            m.brand_name.toLowerCase().includes(q) || 
+            m.generic_name.toLowerCase().includes(q)
+          ).map(m => ({
+            product_name: m.brand_name,
+            generic_name: m.generic_name,
+            market_price: m.market_price,
+            jan_aushadhi_price: m.jan_aushadhi_price
+          }));
+          setSuggestions(filtered);
+        }
+      } catch (e) {
+        console.warn('Search API error, falling back locally:', e);
+        const q = newMedName.toLowerCase();
+        const filtered = MEDICINES_DATABASE.filter(m => 
+          m.brand_name.toLowerCase().includes(q) || 
+          m.generic_name.toLowerCase().includes(q)
+        ).map(m => ({
+          product_name: m.brand_name,
+          generic_name: m.generic_name,
+          market_price: m.market_price,
+          jan_aushadhi_price: m.jan_aushadhi_price
+        }));
+        setSuggestions(filtered);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(delayDebounce);
+  }, [newMedName]);
 
   useEffect(() => { loadData(); }, [patientId]);
 
@@ -244,43 +311,66 @@ export default function MedsScreen() {
     }
   };
 
+  const recalculateSavings = (medsList: any[]) => {
+    const alts = medsList.map(med => {
+      const match = MEDICINES_DATABASE.find(item => 
+        item.brand_name.toLowerCase() === med.medicine_name.toLowerCase() ||
+        item.generic_name.toLowerCase() === med.medicine_name.toLowerCase()
+      );
+      if (match) {
+        return {
+          brand_name: match.brand_name,
+          generic_name: match.generic_name,
+          market_price: match.market_price,
+          jan_aushadhi_price: match.jan_aushadhi_price,
+          savings_percent: Math.round(((match.market_price - match.jan_aushadhi_price) / match.market_price) * 100)
+        };
+      } else {
+        // Fallback for new medicines
+        return {
+          brand_name: med.medicine_name,
+          generic_name: med.medicine_name,
+          market_price: 50,
+          jan_aushadhi_price: 10,
+          savings_percent: 80
+        };
+      }
+    });
+    setGenericAlts(alts);
+  };
+
   const loadData = async () => {
     try {
-      const data = await getMedicines(patientId);
-      const resolved = data?.length ? data : [
-        { id: 'demo-m1', medicine_name: 'Metformin 500mg', next_dose: '08:00 AM' },
-        { id: 'demo-m2', medicine_name: 'Amlodipine 5mg', next_dose: '09:00 PM' },
-        { id: 'demo-m3', medicine_name: 'Vitamin D3', next_dose: '01:00 PM' },
-      ];
+      const savedMedsStr = await AsyncStorage.getItem(`@active_medications_${patientId}`);
+      let resolved = [];
+      if (savedMedsStr) {
+        resolved = JSON.parse(savedMedsStr);
+      } else {
+        resolved = [
+          { id: 'm1', medicine_name: 'Glycomet 500mg', next_dose: '08:00 AM' },
+          { id: 'm2', medicine_name: 'Amlodipine 5mg', next_dose: '09:00 PM' },
+          { id: 'm3', medicine_name: 'Vitamin D3', next_dose: '01:00 PM' },
+        ];
+        await AsyncStorage.setItem(`@active_medications_${patientId}`, JSON.stringify(resolved));
+      }
       setMedications(resolved);
-    } catch {
-      setMedications([
-        { id: 'demo-m1', medicine_name: 'Metformin 500mg', next_dose: '08:00 AM' },
-        { id: 'demo-m2', medicine_name: 'Amlodipine 5mg', next_dose: '09:00 PM' },
-        { id: 'demo-m3', medicine_name: 'Vitamin D3', next_dose: '01:00 PM' },
-      ]);
+      recalculateSavings(resolved);
+    } catch (e) {
+      console.error(e);
+      const fallback = [
+        { id: 'm1', medicine_name: 'Glycomet 500mg', next_dose: '08:00 AM' },
+        { id: 'm2', medicine_name: 'Amlodipine 5mg', next_dose: '09:00 PM' },
+        { id: 'm3', medicine_name: 'Vitamin D3', next_dose: '01:00 PM' },
+      ];
+      setMedications(fallback);
+      recalculateSavings(fallback);
     } finally {
       setLoading(false);
-      fetchGenerics();
     }
   };
 
   const fetchGenerics = async () => {
-    try {
-      const res = await backendService.matchSchemes({
-        patient_id: patientId,
-        age: 45,
-        income_category: 'Low',
-        state: 'Maharashtra',
-        confirmed_conditions: ['Hypertension', 'Diabetes'],
-        current_risk_level: 'Moderate'
-      });
-      if (res?.generic_alternatives) {
-        setGenericAlts(res.generic_alternatives);
-      }
-    } catch (e) {
-      console.error("Failed to fetch generics:", e);
-    }
+    // Spaced out for backwards compatibility, handled dynamically by recalculateSavings
   };
 
   const handleLogAdherence = async (medName: string) => {
@@ -320,7 +410,7 @@ export default function MedsScreen() {
           <body>
             <div class="header">
               <div class="title">SWASTHYA AI — JAN AUSHADHI READY PRESCRIPTION</div>
-              <div class="subtitle">Patient: Indresh | Date: ${new Date().toLocaleDateString('en-GB')}</div>
+              <div class="subtitle">Patient: Indresh Suresh | Date: ${new Date().toLocaleDateString('en-GB')}</div>
             </div>
             <p style="font-weight: bold; color: #374151;">Your Doctor's Prescription → Jan Aushadhi Generic</p>
             <table>
@@ -342,17 +432,17 @@ export default function MedsScreen() {
                   <tr>
                     <td><span class="brand">Glycomet 500mg</span> <span style="color: #9ca3af; font-size: 12px;">(Metformin)</span></td>
                     <td><span class="generic">Metformin 500mg</span></td>
-                    <td class="jan-price">&#8377;52/mo</td>
+                    <td class="jan-price">&#8377;9.20/mo</td>
                   </tr>
                   <tr>
                     <td><span class="brand">Amlokind 5mg</span> <span style="color: #9ca3af; font-size: 12px;">(Amlodipine)</span></td>
                     <td><span class="generic">Amlodipine 5mg</span></td>
-                    <td class="jan-price">&#8377;48/mo</td>
+                    <td class="jan-price">&#8377;5.50/mo</td>
                   </tr>
                   <tr>
-                    <td><span class="brand">Atorva 10mg</span> <span style="color: #9ca3af; font-size: 12px;">(Atorvastatin)</span></td>
-                    <td><span class="generic">Atorvastatin 10mg</span></td>
-                    <td class="jan-price">&#8377;65/mo</td>
+                    <td><span class="brand">Vitamin D3</span> <span style="color: #9ca3af; font-size: 12px;">(Vitamin D3)</span></td>
+                    <td><span class="generic">Vitamin D3</span></td>
+                    <td class="jan-price">&#8377;12.00/mo</td>
                   </tr>
                 `}
               </tbody>
@@ -377,34 +467,77 @@ export default function MedsScreen() {
     }
   };
 
+  const handleSelectSuggestion = (suggestion: any) => {
+    setNewMedName(suggestion.product_name);
+    setSuggestions([]);
+    handleAddMedDirectly(suggestion);
+  };
+
+  const handleAddMedDirectly = async (suggestion: any) => {
+    try {
+      const newMed = {
+        id: `custom-${Date.now()}`,
+        medicine_name: suggestion.product_name,
+        next_dose: '08:00 AM'
+      };
+
+      const updatedList = [...medications, newMed];
+      setMedications(updatedList);
+      await AsyncStorage.setItem(`@active_medications_${patientId}`, JSON.stringify(updatedList));
+
+      // Push to MEDICINES_DATABASE dynamically if not there so recalculateSavings finds it
+      const exists = MEDICINES_DATABASE.some(m => m.brand_name.toLowerCase() === suggestion.product_name.toLowerCase());
+      if (!exists) {
+        MEDICINES_DATABASE.push({
+          brand_name: suggestion.product_name,
+          generic_name: suggestion.generic_name || suggestion.salt_composition || suggestion.product_name,
+          market_price: suggestion.market_price || 50,
+          jan_aushadhi_price: suggestion.jan_aushadhi_price || 10
+        });
+      }
+
+      recalculateSavings(updatedList);
+      setSelectedMed(newMed.medicine_name);
+      setNewMedName('');
+      setSuggestions([]);
+      setAddModalVisible(false);
+
+      const medPayload = {
+        medicine_name: suggestion.product_name,
+        dosage: 'Standard',
+        frequency: 'Once daily',
+        is_critical: false
+      };
+      addMedicine(patientId, medPayload).catch(() => {});
+
+      setTimeout(() => setAnalysisModal(true), 400);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to add medicine.');
+    }
+  };
+
   const handleAddMed = async () => {
     if (!newMedName.trim()) return;
 
-    const medPayload = {
-      medicine_name: newMedName.trim(),
-      dosage: 'Standard',
-      frequency: 'Once daily',
-      is_critical: false
-    };
-
-    try {
-      const res = await addMedicine(patientId, medPayload);
-      if (res) {
-        const newMed = {
-          id: res.data?.id || `custom-${Date.now()}`,
-          medicine_name: newMedName.trim(),
-          next_dose: '08:00 AM'
-        };
-        setMedications(prev => [...prev, newMed]);
-        setSelectedMed(newMed.medicine_name);
-        setNewMedName('');
-        setAddModalVisible(false);
-        fetchGenerics();
-        setTimeout(() => setAnalysisModal(true), 400);
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to add medicine to profile.');
+    // Check if name matches a suggestion or local database item
+    const match = MEDICINES_DATABASE.find(m => m.brand_name.toLowerCase() === newMedName.trim().toLowerCase());
+    if (match) {
+      handleAddMedDirectly({
+        product_name: match.brand_name,
+        generic_name: match.generic_name,
+        market_price: match.market_price,
+        jan_aushadhi_price: match.jan_aushadhi_price
+      });
+      return;
     }
+
+    // Default fallback values
+    handleAddMedDirectly({
+      product_name: newMedName.trim(),
+      generic_name: newMedName.trim(),
+      market_price: 50,
+      jan_aushadhi_price: 10
+    });
   };
 
   return (
@@ -564,6 +697,27 @@ export default function MedsScreen() {
               value={newMedName}
               onChangeText={setNewMedName}
             />
+            {isSearching && (
+              <ActivityIndicator size="small" color="#0474FC" style={{ marginBottom: 12 }} />
+            )}
+            {suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {suggestions.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSelectSuggestion(item)}
+                  >
+                    <Ionicons name="medical" size={16} color="#0474FC" />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.suggestionName}>{item.product_name}</Text>
+                      <Text style={styles.suggestionGeneric}>Alt: {item.generic_name || item.salt_composition}</Text>
+                    </View>
+                    <Text style={styles.suggestionPrice}>₹{item.market_price}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
             <TouchableOpacity style={styles.submitModalBtn} onPress={handleAddMed}>
               <Text style={styles.submitModalText}>Add & Analyse</Text>
             </TouchableOpacity>
@@ -724,4 +878,35 @@ const styles = StyleSheet.create({
   storeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   storeName: { flex: 1, fontSize: 13, color: '#374151' },
   navigateText: { color: '#0EA5E9', fontWeight: '600', fontSize: 13 },
+  suggestionsContainer: {
+    maxHeight: 180,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  suggestionGeneric: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  suggestionPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#10B981',
+  },
 });

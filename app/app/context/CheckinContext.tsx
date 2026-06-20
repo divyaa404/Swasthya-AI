@@ -11,21 +11,21 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 // Mock API - Simulates backend question delivery
 const MOCK_API = {
   initialQuestions: [
-    { id: 'q1', question_text: 'How are you feeling today overall?', asked_by: 'ai', category: 'general', options: ['😊 Feeling Great', '😐 Okay', '😔 Not Good'] },
-    { id: 'q2', question_text: 'Have you taken your medications today?', asked_by: 'doctor', category: 'medication', options: ['✅ Yes, all taken', '⏳ Some missed', '❌ Not yet'] },
-    { id: 'q3', question_text: 'Any unusual symptoms today?', asked_by: 'ai', category: 'symptoms', options: ['✅ None', '🟡 Mild', '🟠 Moderate', '🔴 Severe'] },
-    { id: 'q4', question_text: 'How was your sleep quality?', asked_by: 'doctor', category: 'sleep', options: ['⭐ Excellent', '👍 Good', '👎 Fair', '😴 Poor'] },
-    { id: 'q5', question_text: 'Feeling stressed or anxious?', asked_by: 'ai', category: 'mental', options: ['😌 None', '😟 Mild', '😰 Moderate', '😱 High'] },
+    { id: 'q1', question_text: 'How are you feeling today overall?', asked_by: 'ai' as const, category: 'general', options: ['😊 Feeling Great', '😐 Okay', '😔 Not Good'] },
+    { id: 'q2', question_text: 'Have you taken your medications today?', asked_by: 'doctor' as const, category: 'medication', options: ['✅ Yes, all taken', '⏳ Some missed', '❌ Not yet'] },
+    { id: 'q3', question_text: 'Any unusual symptoms today?', asked_by: 'ai' as const, category: 'symptoms', options: ['✅ None', '🟡 Mild', '🟠 Moderate', '🔴 Severe'] },
+    { id: 'q4', question_text: 'How was your sleep quality?', asked_by: 'doctor' as const, category: 'sleep', options: ['⭐ Excellent', '👍 Good', '👎 Fair', '😴 Poor'] },
+    { id: 'q5', question_text: 'Feeling stressed or anxious?', asked_by: 'ai' as const, category: 'mental', options: ['😌 None', '😟 Mild', '😰 Moderate', '😱 High'] },
   ],
   
   simulateNewQuestion: () => {
     const newQuestions = [
-      { id: `q${Date.now()}-1`, question_text: 'How is your appetite today?', asked_by: 'ai', category: 'nutrition', options: ['🍽️ Normal', '🍲 Reduced', '🍔 Increased'] },
-      { id: `q${Date.now()}-2`, question_text: 'Have you exercised recently?', asked_by: 'doctor', category: 'lifestyle', options: ['🏃 Yes', '🚶 Light walk', '🛋️ No'] },
-      { id: `q${Date.now()}-3`, question_text: 'Are you experiencing any pain?', asked_by: 'ai', category: 'symptoms', options: ['✅ No pain', '🟡 Mild', '🟠 Moderate', '🔴 Severe'] },
-      { id: `q${Date.now()}-4`, question_text: 'How is your energy level?', asked_by: 'doctor', category: 'general', options: ['⚡ High', '🔋 Moderate', '🪫 Low'] },
-      { id: `q${Date.now()}-5`, question_text: 'Have you been sleeping well?', asked_by: 'ai', category: 'sleep', options: ['😴 Yes', '😐 Sometimes', '😫 No'] },
-      { id: `q${Date.now()}-6`, question_text: 'Any changes in your mood?', asked_by: 'doctor', category: 'mental', options: ['😊 Stable', '😐 Slight ', '😔 Significant '] },
+      { id: `q${Date.now()}-1`, question_text: 'How is your appetite today?', asked_by: 'ai' as const, category: 'nutrition', options: ['🍽️ Normal', '🍲 Reduced', '🍔 Increased'] },
+      { id: `q${Date.now()}-2`, question_text: 'Have you exercised recently?', asked_by: 'doctor' as const, category: 'lifestyle', options: ['🏃 Yes', '🚶 Light walk', '🛋️ No'] },
+      { id: `q${Date.now()}-3`, question_text: 'Are you experiencing any pain?', asked_by: 'ai' as const, category: 'symptoms', options: ['✅ No pain', '🟡 Mild', '🟠 Moderate', '🔴 Severe'] },
+      { id: `q${Date.now()}-4`, question_text: 'How is your energy level?', asked_by: 'doctor' as const, category: 'general', options: ['⚡ High', '🔋 Moderate', '🪫 Low'] },
+      { id: `q${Date.now()}-5`, question_text: 'Have you been sleeping well?', asked_by: 'ai' as const, category: 'sleep', options: ['😴 Yes', '😐 Sometimes', '😫 No'] },
+      { id: `q${Date.now()}-6`, question_text: 'Any changes in your mood?', asked_by: 'doctor' as const, category: 'mental', options: ['😊 Stable', '😐 Slight ', '😔 Significant '] },
     ];
     return newQuestions[Math.floor(Math.random() * newQuestions.length)];
   }
@@ -89,7 +89,7 @@ export const CheckinProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   
-  const newQuestionTimer = useRef<NodeJS.Timeout | null>(null);
+  const newQuestionTimer = useRef<any>(null);
   const pendingRef = useRef<Question[]>([]);
   const completedRef = useRef<CompletedQuestion[]>([]);
   const isMounted = useRef(true);
@@ -155,19 +155,6 @@ export const CheckinProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Load initial questions from API
   const loadInitialQuestions = useCallback(async () => {
     try {
-      // Check for saved state first
-      const savedState = await loadState();
-      
-      if (savedState && isMounted.current) {
-        // Restore from saved state
-        setPendingQuestions(savedState.pendingQuestions);
-        setCompletedQuestions(savedState.completedQuestions);
-        setSelectedAnswers(savedState.selectedAnswers);
-        setIsLoading(false);
-        setIsInitialized(true);
-        return;
-      }
-
       // No saved state - load from API
       setIsLoading(true);
       await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network delay

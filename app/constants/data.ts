@@ -1,11 +1,11 @@
-// app/constants/fakeData.ts
-// All fake data - looks real, completely fake
+// app/constants/data.ts
+// All fake data - looks real, system data
 
-export const FAKE_PATIENT = {
-  id: 'fake-user-123',
-  full_name: 'Indresh',
+export const DATA_PATIENT = {
+  id: 'user-123',
+  full_name: 'Indresh Suresh',
   age: 20,
-  phone_number: '+91 98765 43210',
+  phone_number: '+91 9324474812',
   gender: 'Male',
   location: 'Bangalore, India',
   risk_level: 'Moderate',
@@ -22,7 +22,7 @@ export const FAKE_PATIENT = {
   surgeries: [],
 };
 
-export const FAKE_DAILY_SUMMARIES = [
+export const DATA_DAILY_SUMMARIES = [
   {
     id: '1',
     summary_date: new Date(Date.now() - 0 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -85,11 +85,11 @@ export const FAKE_DAILY_SUMMARIES = [
   },
 ];
 
-export const FAKE_HEALTH_GRAPH_NODES = {
+export const DATA_HEALTH_GRAPH_NODES = {
   nodes: [
     {
       id: 'user-main',
-      label: 'Indresh (20)',
+      label: 'Indresh Suresh (20)',
       type: 'user',
       color: '#FF6B6B',
     },
@@ -230,7 +230,7 @@ export const FAKE_HEALTH_GRAPH_NODES = {
   ],
 };
 
-export const FAKE_AI_INSIGHTS = [
+export const DATA_AI_INSIGHTS = [
   {
     id: '1',
     title: 'Sleep Pattern Alert',
@@ -261,10 +261,10 @@ export const FAKE_AI_INSIGHTS = [
   },
 ];
 
-export const FAKE_FAMILY_DATA = [
+export const DATA_FAMILY_DATA = [
   {
     member_id: 'member-1',
-    member_name: 'Indresh',
+    member_name: 'Indresh Suresh',
     relation: 'Self',
     active_symptoms: ['Headache', 'Anxiety'],
     risk_score: 58,
@@ -272,8 +272,8 @@ export const FAKE_FAMILY_DATA = [
   },
   {
     member_id: 'member-2',
-    member_name: 'Raj Kumar',
-    relation: 'Father',
+    member_name: 'Aryan',
+    relation: 'Friend',
     active_symptoms: ['Hypertension', 'Fatigue'],
     risk_score: 72,
     risk_level: 'High',
@@ -288,7 +288,7 @@ export const FAKE_FAMILY_DATA = [
   },
 ];
 
-export const FAKE_SHARED_SYMPTOMS = [
+export const DATA_SHARED_SYMPTOMS = [
   {
     symptom: 'Headache',
     members: ['Indresh', 'Priya'],
@@ -303,7 +303,7 @@ export const FAKE_SHARED_SYMPTOMS = [
   },
 ];
 
-export const FAKE_RISK_SCORE_DATA = {
+export const DATA_RISK_SCORE_DATA = {
   current_score: 58,
   score_range: '55-62',
   confidence: 'Moderate',
@@ -322,9 +322,9 @@ export const FAKE_RISK_SCORE_DATA = {
 };
 
 // Chat greeting message
-export const FAKE_CHAT_GREETING = {
+export const DATA_CHAT_GREETING = {
   id: 'greeting-1',
-  text: `Hey Indresh 👋! I'm your health AI assistant. I've been analyzing your health patterns, and I noticed a few things:
+  text: `Hey Indresh Suresh 👋! I'm your health AI assistant. I've been analyzing your health patterns, and I noticed a few things:
 
 1. **Sleep & Headaches**: Your irregular sleep schedule seems to trigger most of your headaches. Consistent bedtime could help!
 
@@ -338,7 +338,7 @@ Feel free to ask me anything about your health patterns, symptoms, or how to imp
 };
 
 // Medicines/Prescriptions
-export const FAKE_MEDICINES = [
+export const DATA_MEDICINES = [
   {
     id: 'med-1',
     name: 'Aspirin',
@@ -360,7 +360,7 @@ export const FAKE_MEDICINES = [
 ];
 
 // Vitals History
-export const FAKE_VITALS_HISTORY = [
+export const DATA_VITALS_HISTORY = [
   {
     date: new Date(Date.now() - 0 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     bloodPressure: '120/80',
@@ -385,7 +385,7 @@ export const FAKE_VITALS_HISTORY = [
 ];
 
 // Government Schemes
-export const FAKE_GOVERNMENT_SCHEMES = [
+export const DATA_GOVERNMENT_SCHEMES = [
   {
     id: 'scheme-1',
     name: 'Ayushman Bharat',
@@ -413,7 +413,7 @@ export const FAKE_GOVERNMENT_SCHEMES = [
 ];
 
 // Alerts & Recommendations
-export const FAKE_ALERTS = [
+export const DATA_ALERTS = [
   {
     id: 'alert-1',
     type: 'warning',
@@ -433,7 +433,7 @@ export const FAKE_ALERTS = [
 ];
 
 // Recommendations
-export const FAKE_RECOMMENDATIONS = [
+export const DATA_RECOMMENDATIONS = [
   {
     id: 'rec-1',
     title: 'Establish Sleep Routine',

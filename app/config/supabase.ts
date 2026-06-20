@@ -41,9 +41,9 @@ const createMockSupabase = () => {
         from: (table: string) => {
             if (table === 'users') {
                 return makePromise({
-                    id: 'demo-patient-id',
+                    id: 'patient-123',
                     name: 'Indresh Suresh',
-                    age: 24,
+                    age: 20,
                     gender: 'Male',
                     phone: '9324474812',
                     family_id: 'family_123456',
@@ -55,7 +55,7 @@ const createMockSupabase = () => {
                     id: 'family_123456',
                     family_name: 'Sharma Family',
                     qr_code: 'SWASTHYA_FAMILY:123456',
-                    created_by: 'demo-patient-id',
+                    created_by: 'patient-123',
                     created_at: new Date().toISOString(),
                     join_code: '123456'
                 });
@@ -65,12 +65,12 @@ const createMockSupabase = () => {
                     {
                         id: 'member-1',
                         family_id: 'family_123456',
-                        patient_id: 'patient-1',
+                        patient_id: 'patient-123',
                         role: 'admin',
                         patient: {
-                            id: 'patient-1',
+                            id: 'patient-123',
                             name: 'Indresh Suresh',
-                            age: 24,
+                            age: 20,
                             gender: 'Male',
                             phone: '9324474812',
                             family_id: 'family_123456'

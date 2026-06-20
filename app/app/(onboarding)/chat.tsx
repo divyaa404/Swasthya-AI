@@ -281,8 +281,8 @@ export default function OnboardingChatScreen() {
   };
 
   const handleSkipAll = () => {
-    const fakeProfileData = {
-      full_name: 'Indresh',
+    const profileData = {
+      full_name: 'Indresh Suresh',
       age: 20,
       gender: 'Male',
       blood_group: 'O+',
@@ -305,7 +305,7 @@ export default function OnboardingChatScreen() {
     
     router.push({
       pathname: '/(onboarding)/summary',
-      params: { profileData: JSON.stringify(fakeProfileData) },
+      params: { profileData: JSON.stringify(profileData) },
     });
   };
 

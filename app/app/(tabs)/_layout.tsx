@@ -121,61 +121,63 @@ export default function TabLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: '#F9FAFB' }}>
       {/* Top Navigation Bar */}
-      <View style={styles.topNavContainer}>
-        <View style={styles.topNavBar}>
-          {/* Left - Scan Button */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.leftButton}
-          >
-            <LinearGradient
-              colors={[PRIMARY_COLOR, PRIMARY_DARK]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.gradientButton}
-            >
-              <Ionicons name="scan-outline" size={22} color="#FFFFFF" />
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Center - Title Pill */}
-          <View style={styles.centerPill}>
-            <View style={styles.pillContent}>
-              <View style={styles.blueDot} />
-              <Text style={styles.pillText}>{getTabTitle()}</Text>
-            </View>
-          </View>
-
-          {/* Right - Notification & Avatar */}
-          <View style={styles.rightSection}>
+      {activeTab !== 4 && (
+        <View style={styles.topNavContainer}>
+          <View style={styles.topNavBar}>
+            {/* Left - Scan Button */}
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.iconButton}
-            >
-              <View style={styles.iconContainer}>
-                <Ionicons name="notifications-outline" size={22} color="#374151" />
-                <View style={styles.notificationBadge}>
-                  <Text style={styles.badgeText}>3</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.avatarButton}
+              style={styles.leftButton}
             >
               <LinearGradient
                 colors={[PRIMARY_COLOR, PRIMARY_DARK]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.avatarGradient}
+                style={styles.gradientButton}
               >
-                <Text style={styles.avatarText}>I</Text>
+                <Ionicons name="scan-outline" size={22} color="#FFFFFF" />
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Center - Title Pill */}
+            <View style={styles.centerPill}>
+              <View style={styles.pillContent}>
+                <View style={styles.blueDot} />
+                <Text style={styles.pillText}>{getTabTitle()}</Text>
+              </View>
+            </View>
+
+            {/* Right - Notification & Avatar */}
+            <View style={styles.rightSection}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.iconButton}
+              >
+                <View style={styles.iconContainer}>
+                  <Ionicons name="notifications-outline" size={22} color="#374151" />
+                  <View style={styles.notificationBadge}>
+                    <Text style={styles.badgeText}>3</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.avatarButton}
+              >
+                <LinearGradient
+                  colors={[PRIMARY_COLOR, PRIMARY_DARK]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.avatarGradient}
+                >
+                  <Text style={styles.avatarText}>I</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* Content wrapped with CheckinProvider for state persistence */}
       <CheckinProvider>
@@ -183,120 +185,119 @@ export default function TabLayout() {
       </CheckinProvider>
       
       {/* Bottom Navigation Bar */}
-      <Animated.View 
-        style={[
-          styles.navContainer,
-          {
-            opacity: navBarAnim,
-            transform: [
-              {
-                translateY: navBarAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [150, 0],
-                }),
-              },
-            ],
-          },
-        ]}
-        pointerEvents={activeTab === 4 ? 'none' : 'auto'}
-      >
-        <View style={styles.navbar}>
-          <View style={styles.navContent}>
-            {leftTabs.map((tab, idx) => {
-              const isActive = activeTab === idx;
-              return (
-                <Animated.View
-                  key={tab.name}
-                  style={{ transform: [{ scale: tabScaleAnims[idx] }] }}
-                >
-                  <TouchableOpacity
-                    onPress={() => router.push(tab.route as any)}
-                    onPressIn={() => animateTabState(idx, true)}
-                    onPressOut={() => animateTabState(idx, false)}
-                    activeOpacity={0.7}
-                    style={styles.navItem}
-                  >
-                    <Animated.View style={[
-                      styles.iconWrapper,
-                      isActive && styles.activeIconWrapper,
-                    ]}>
-                      <Ionicons 
-                        name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
-                        size={24} 
-                        color="#FFFFFF" 
-                      />
-                    </Animated.View>
-                    <Animated.Text style={[
-                      styles.navLabel, 
-                      isActive && styles.activeNavLabel,
-                      { transform: [{ scale: getTextScale(idx) }] }
-                    ]}>
-                      {tab.name}
-                    </Animated.Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
-
-            <View style={styles.fabSpace} />
-
-            {rightTabs.map((tab, idx) => {
-              const isActive = activeTab === idx + 2;
-              const tabIndex = idx + 2;
-              return (
-                <Animated.View
-                  key={tab.name}
-                  style={{ transform: [{ scale: tabScaleAnims[tabIndex] }] }}
-                >
-                  <TouchableOpacity
-                    onPress={() => router.push(tab.route as any)}
-                    onPressIn={() => animateTabState(tabIndex, true)}
-                    onPressOut={() => animateTabState(tabIndex, false)}
-                    activeOpacity={0.7}
-                    style={styles.navItem}
-                  >
-                    <Animated.View style={[
-                      styles.iconWrapper,
-                      isActive && styles.activeIconWrapper,
-                    ]}>
-                      <Ionicons 
-                        name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
-                        size={24} 
-                        color="#FFFFFF" 
-                      />
-                    </Animated.View>
-                    <Animated.Text style={[
-                      styles.navLabel, 
-                      isActive && styles.activeNavLabel,
-                      { transform: [{ scale: getTextScale(tabIndex) }] }
-                    ]}>
-                      {tab.name}
-                    </Animated.Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Floating Action Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleFabPress}
-          style={styles.fabOuter}
+      {activeTab !== 4 && (
+        <Animated.View 
+          style={[
+            styles.navContainer,
+            {
+              opacity: navBarAnim,
+              transform: [
+                {
+                  translateY: navBarAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [150, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+          pointerEvents="auto"
         >
-          <View style={[
-            styles.fabButton,
-            activeTab === 4 && { backgroundColor: PRIMARY_COLOR }
-          ]}>
-            <Ionicons 
-              name="chatbubble-ellipses" 
-              size={30} 
-              color={activeTab === 4 ? '#FFFFFF' : PRIMARY_COLOR} 
-            />
+          <View style={styles.navbar}>
+            <View style={styles.navContent}>
+              {leftTabs.map((tab, idx) => {
+                const isActive = activeTab === idx;
+                return (
+                  <Animated.View
+                    key={tab.name}
+                    style={{ transform: [{ scale: tabScaleAnims[idx] }] }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => router.push(tab.route as any)}
+                      onPressIn={() => animateTabState(idx, true)}
+                      onPressOut={() => animateTabState(idx, false)}
+                      activeOpacity={0.7}
+                      style={styles.navItem}
+                    >
+                      <Animated.View style={[
+                        styles.iconWrapper,
+                        isActive && styles.activeIconWrapper,
+                      ]}>
+                        <Ionicons 
+                          name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
+                          size={24} 
+                          color="#FFFFFF" 
+                        />
+                      </Animated.View>
+                      <Animated.Text style={[
+                        styles.navLabel, 
+                        isActive && styles.activeNavLabel,
+                        { transform: [{ scale: getTextScale(idx) }] }
+                      ]}>
+                        {tab.name}
+                      </Animated.Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })}
+
+              <View style={styles.fabSpace} />
+
+              {rightTabs.map((tab, idx) => {
+                const isActive = activeTab === idx + 2;
+                const tabIndex = idx + 2;
+                return (
+                  <Animated.View
+                    key={tab.name}
+                    style={{ transform: [{ scale: tabScaleAnims[tabIndex] }] }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => router.push(tab.route as any)}
+                      onPressIn={() => animateTabState(tabIndex, true)}
+                      onPressOut={() => animateTabState(tabIndex, false)}
+                      activeOpacity={0.7}
+                      style={styles.navItem}
+                    >
+                      <Animated.View style={[
+                        styles.iconWrapper,
+                        isActive && styles.activeIconWrapper,
+                      ]}>
+                        <Ionicons 
+                          name={isActive ? (tab.activeIcon as any) : (tab.icon as any)} 
+                          size={24} 
+                          color="#FFFFFF" 
+                        />
+                      </Animated.View>
+                      <Animated.Text style={[
+                        styles.navLabel, 
+                        isActive && styles.activeNavLabel,
+                        { transform: [{ scale: getTextScale(tabIndex) }] }
+                      ]}>
+                        {tab.name}
+                      </Animated.Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })}
+            </View>
           </View>
-        </TouchableOpacity>
-      </Animated.View>
+
+          {/* Floating Action Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleFabPress}
+            style={styles.fabOuter}
+          >
+            <View style={styles.fabButton}>
+              <Ionicons 
+                name="chatbubble-ellipses" 
+                size={30} 
+                color={PRIMARY_COLOR} 
+              />
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }

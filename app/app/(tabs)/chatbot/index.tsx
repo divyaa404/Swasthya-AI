@@ -495,7 +495,7 @@ export default function ChatScreen() {
     };
     setMessages(prev => [...prev, userMessage]);
 
-    const sessionId = 'session-' + (user?.id || 'demo');
+    const sessionId = 'session-' + (user?.id || 'patient-123');
     const context = {
       rolling_summary: "Voice conversation session",
       profile_summary: "Voice onboarding",
@@ -509,7 +509,7 @@ export default function ChatScreen() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          patient_id: user?.id || 'demo-patient',
+          patient_id: user?.id || 'patient-123',
           session_id: sessionId,
           message: spokenText,
           patient_context: context,
@@ -636,7 +636,7 @@ export default function ChatScreen() {
     setInputText('');
     setIsLoading(true);
 
-    const sessionId = 'session-' + (user?.id || 'demo');
+    const sessionId = 'session-' + (user?.id || 'patient-123');
     const context = {
       rolling_summary: "Initial onboarding conversation",
       profile_summary: "New patient onboarding",
@@ -649,7 +649,7 @@ export default function ChatScreen() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        patient_id: user?.id || 'demo-patient',
+        patient_id: user?.id || 'patient-123',
         session_id: sessionId,
         message: currentInput,
         patient_context: context,
@@ -686,7 +686,7 @@ export default function ChatScreen() {
     setIsLoading(true);
     try {
       await backendService.endSession(
-        user?.id || 'demo',
+        user?.id || 'patient-123',
         messages.map(m => ({ role: m.isUser ? 'user' : 'assistant', content: m.text })),
         ""
       );
@@ -1095,7 +1095,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingTop: Platform.OS === 'ios' ? 50 : 50,
     paddingBottom: 16,
     backgroundColor: '#171717',
     borderBottomWidth: 1,
@@ -1220,6 +1220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
+    paddingBottom: 10,
     backgroundColor: '#171717',
     borderTopWidth: 1,
     borderTopColor: '#2D2D2D',
@@ -1295,7 +1296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingTop: Platform.OS === 'ios' ? 12 : 52,
     paddingBottom: 16,
   },
   voiceCloseButton: {
@@ -1434,8 +1435,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingHorizontal: 6,
+    paddingTop: Platform.OS === 'ios' ? 32 : 42,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#2D2D2D',

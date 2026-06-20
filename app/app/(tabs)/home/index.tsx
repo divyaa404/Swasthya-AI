@@ -561,10 +561,14 @@ export default function HomeScreen() {
                 <AIInsightCard summaryText={aiSummary} />
 
                 {/* Government Scheme Card */}
-                <GovernmentSchemeCard />
+                <View style={{ marginHorizontal: 16 }}>
+                  <GovernmentSchemeCard />
+                </View>
 
                 {/* 3D Body Map Card */}
-                <BodyMapCard onPress={() => setBodyMapVisible(true)} />
+                <View style={{ marginHorizontal: 16 }}>
+                  <BodyMapCard onPress={() => setBodyMapVisible(true)} />
+                </View>
 
                 {/* Prediction Card */}
                 <PredictionCard />
@@ -632,10 +636,11 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 0,
     paddingVertical: 12,
   },
   welcomeSection: {
+    paddingHorizontal: 16,
     marginBottom: 16,
   },
   welcomeHeader: {
@@ -671,7 +676,7 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   // Prediction Card
-  predCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderLeftWidth: 3, borderLeftColor: '#8B5CF6' },
+  predCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, marginHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderLeftWidth: 3, borderLeftColor: '#8B5CF6' },
   predHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   predTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111827' },
   predBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
@@ -685,7 +690,7 @@ const styles = StyleSheet.create({
   predDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E5E7EB' },
   predDotActive: { backgroundColor: '#8B5CF6', width: 18 },
   // Family Card
-  familyCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  familyCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginTop: 16, marginHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   familyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   familyTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: '#111827' },
   familyInsight: { fontSize: 13, color: '#374151', lineHeight: 18, marginBottom: 12, backgroundColor: '#F0F9FF', padding: 10, borderRadius: 10 },
@@ -696,6 +701,7 @@ const styles = StyleSheet.create({
   // New Card Styles
   newCard: {
     marginTop: 16,
+    marginHorizontal: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,

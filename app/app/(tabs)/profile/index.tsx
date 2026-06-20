@@ -31,7 +31,11 @@ import {
   MedicalInformationCard,
   QuickEmergencyCard,
   FamilyMembersList,
+  SchemesCard,
+  SchemesModal,
+  DocumentScannerOverlay,
 } from '@/components/profile';
+import { useAuthStore } from '@/store/auth.store';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -60,8 +64,14 @@ const COLORS = {
 
 const BOTTOM_BAR_HEIGHT = isWeb ? 40 : 120;
 
+interface LogoutAlertProps {
+  visible: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
 // Custom Logout Alert Component
-const LogoutAlert = ({ visible, onConfirm, onCancel }) => {
+const LogoutAlert = ({ visible, onConfirm, onCancel }: LogoutAlertProps) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableWithoutFeedback onPress={onCancel}>
@@ -106,8 +116,15 @@ const LogoutAlert = ({ visible, onConfirm, onCancel }) => {
   );
 };
 
+interface DeleteContactAlertProps {
+  visible: boolean;
+  name: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
 // Custom Delete Contact Alert Component
-const DeleteContactAlert = ({ visible, name, onConfirm, onCancel }) => {
+const DeleteContactAlert = ({ visible, name, onConfirm, onCancel }: DeleteContactAlertProps) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableWithoutFeedback onPress={onCancel}>
@@ -152,8 +169,15 @@ const DeleteContactAlert = ({ visible, name, onConfirm, onCancel }) => {
   );
 };
 
+interface SuccessAlertProps {
+  visible: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+}
+
 // Custom Success Alert Component
-const SuccessAlert = ({ visible, title, message, onConfirm }) => {
+const SuccessAlert = ({ visible, title, message, onConfirm }: SuccessAlertProps) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <TouchableWithoutFeedback onPress={onConfirm}>
@@ -192,6 +216,8 @@ const SuccessAlert = ({ visible, title, message, onConfirm }) => {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const logout = useAuthStore(s => s.logout);
+  
   const [activeTab, setActiveTab] = useState<'profile' | 'family'>('profile');
   const [logoutAlertVisible, setLogoutAlertVisible] = useState(false);
   const [deleteAlertVisible, setDeleteAlertVisible] = useState(false);
@@ -202,13 +228,46 @@ export default function ProfileScreen() {
   const [successMessage, setSuccessMessage] = useState('');
   const scrollViewRef = useRef<ScrollView>(null);
 
+  const [isIncomeVerified, setIsIncomeVerified] = useState(false);
+  const [schemesModalVisible, setSchemesModalVisible] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
+
+  const handleSchemesPress = () => {
+    if (isIncomeVerified) {
+      setSchemesModalVisible(true);
+    } else {
+      Alert.alert(
+        'Verify Income Certificate',
+        'To unlock and view low-income government schemes, you must verify your income certificate.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Verify Now', onPress: () => setScannerVisible(true) }
+        ]
+      );
+    }
+  };
+
+  const handleScanComplete = () => {
+    setScannerVisible(false);
+    setIsIncomeVerified(true);
+    setTimeout(() => {
+      Alert.alert(
+        'Verification Successful',
+        'Income certificate verified successfully!\n\n• Annual Income: ₹1.8 Lakhs\n• Status: Eligible for low-income schemes',
+        [
+          { text: 'View Eligible Schemes', onPress: () => setSchemesModalVisible(true) }
+        ]
+      );
+    }, 450);
+  };
+
   useEffect(() => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, [activeTab]);
 
   // Profile data
   const profile = {
-    name: 'Indresh',
+    name: 'Indresh Suresh',
     age: 20,
     gender: 'Male',
     phone: '+91 9324474812',
@@ -239,33 +298,41 @@ export default function ProfileScreen() {
   const familyMembers = [
     { 
       id: 'm_1', 
-      name: 'Indresh', 
+      name: 'Indresh Suresh', 
       age: 20, 
-      relationship: 'Father', 
+      relationship: 'Self', 
       risk: 'Moderate', 
       phone: '+91 9324474812' 
     },
     { 
       id: 'm_2', 
+      name: 'Aryan', 
+      age: 20, 
+      relationship: 'Friend', 
+      risk: 'Low', 
+      phone: '+91 98765 43210' 
+    },
+    { 
+      id: 'm_3', 
       name: 'Monish', 
       age: 65, 
-      relationship: 'Grandfather', 
+      relationship: 'Grandfather (Family)', 
       risk: 'Low', 
       phone: '+91 9372962545' 
     },
     { 
-      id: 'm_3', 
+      id: 'm_4', 
       name: 'Divya', 
       age: 42, 
-      relationship: 'Mother', 
+      relationship: 'Mother (Family)', 
       risk: 'Low', 
       phone: '+91 7559302315' 
     },
     { 
-      id: 'm_4', 
+      id: 'm_5', 
       name: 'Ankita', 
       age: 10, 
-      relationship: 'Child', 
+      relationship: 'Child (Family)', 
       risk: 'Low', 
       phone: '+91 9970206614' 
     },
@@ -332,7 +399,8 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     setLogoutAlertVisible(false);
-    console.log('Logging out...');
+    logout();
+    router.replace('/(auth)/login');
   };
 
   const profileRiskFactors = [
@@ -406,7 +474,9 @@ export default function ProfileScreen() {
             <QuickEmergencyCard
               contacts={emergencyContacts}
               onAddContact={handleAddEmergencyContact}
-              onDeleteContact={showDeleteAlert}
+              onDeleteContact={(id) => {
+                setEmergencyContacts(prev => prev.filter(c => c.id !== id));
+              }}
             />
           </View>
         ) : (
@@ -443,6 +513,9 @@ export default function ProfileScreen() {
 
             {/* 5. AI Insight */}
             <AIInsightCard summaryText={familyAISummary} />
+
+            {/* 6. Government Schemes */}
+            <SchemesCard isVerified={isIncomeVerified} onPress={handleSchemesPress} />
           </View>
         )}
 
@@ -460,6 +533,19 @@ export default function ProfileScreen() {
         visible={logoutAlertVisible}
         onConfirm={handleLogout}
         onCancel={() => setLogoutAlertVisible(false)}
+      />
+
+      {/* Schemes Modals & Overlay */}
+      <SchemesModal
+        visible={schemesModalVisible}
+        onClose={() => setSchemesModalVisible(false)}
+        onReupload={() => setScannerVisible(true)}
+      />
+
+      <DocumentScannerOverlay
+        visible={scannerVisible}
+        fileName="Income_Certificate.pdf"
+        onComplete={handleScanComplete}
       />
 
       {/* Delete Contact Alert */}
