@@ -249,7 +249,7 @@ const GraphView = ({ data, onNodeSelect }: { data: any, onNodeSelect: (node: any
     return (
       <View style={[styles.graphContainer, styles.loadingContainer]}>
         <ActivityIndicator size="large" color={COLORS.nodes.family} />
-        <Text style={styles.loadingText}>Building Obsidian Network...</Text>
+        <Text style={styles.loadingText}>Building Network...</Text>
         <Text style={styles.loadingSubText}>Calculating spatial vectors</Text>
       </View>
     );
