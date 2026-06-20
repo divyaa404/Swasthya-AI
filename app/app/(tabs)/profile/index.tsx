@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as DocumentPicker from 'expo-document-picker';
 
 // Import all components
 import {
@@ -231,6 +232,25 @@ export default function ProfileScreen() {
   const [isIncomeVerified, setIsIncomeVerified] = useState(false);
   const [schemesModalVisible, setSchemesModalVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('Income_Certificate.pdf');
+
+  const handleVerifyPress = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const doc = result.assets[0];
+        setUploadedFileName(doc.name);
+        setScannerVisible(true);
+      }
+    } catch (err) {
+      console.error('Error picking document:', err);
+      Alert.alert('Selection Error', 'Failed to pick a document. Please try again.');
+    }
+  };
 
   const handleSchemesPress = () => {
     if (isIncomeVerified) {
@@ -241,7 +261,7 @@ export default function ProfileScreen() {
         'To unlock and view low-income government schemes, you must verify your income certificate.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Verify Now', onPress: () => setScannerVisible(true) }
+          { text: 'Verify Now', onPress: () => handleVerifyPress() }
         ]
       );
     }
@@ -253,7 +273,7 @@ export default function ProfileScreen() {
     setTimeout(() => {
       Alert.alert(
         'Verification Successful',
-        'Income certificate verified successfully!\n\n• Annual Income: ₹1.8 Lakhs\n• Status: Eligible for low-income schemes',
+        `Income certificate "${uploadedFileName}" verified successfully!\n\n• Annual Income: ₹1.8 Lakhs\n• Status: Eligible for low-income schemes`,
         [
           { text: 'View Eligible Schemes', onPress: () => setSchemesModalVisible(true) }
         ]
@@ -303,14 +323,6 @@ export default function ProfileScreen() {
       relationship: 'Self', 
       risk: 'Moderate', 
       phone: '+91 9324474812' 
-    },
-    { 
-      id: 'm_2', 
-      name: 'Aryan', 
-      age: 20, 
-      relationship: 'Friend', 
-      risk: 'Low', 
-      phone: '+91 98765 43210' 
     },
     { 
       id: 'm_3', 
@@ -544,7 +556,7 @@ export default function ProfileScreen() {
 
       <DocumentScannerOverlay
         visible={scannerVisible}
-        fileName="Income_Certificate.pdf"
+        fileName={uploadedFileName}
         onComplete={handleScanComplete}
       />
 

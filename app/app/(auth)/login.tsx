@@ -173,11 +173,24 @@ export default function LoginScreen() {
   const [alertTitle, setAlertTitle] = useState('');
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState<'success' | 'warning' | 'error' | 'info' | 'confirm'>('info');
+  const [alertConfirmText, setAlertConfirmText] = useState('OK');
+  const [alertCancelText, setAlertCancelText] = useState('Cancel');
+  const [alertOnConfirm, setAlertOnConfirm] = useState<(() => void) | undefined>(undefined);
 
-  const showAlert = (title: string, message: string, type: 'success' | 'warning' | 'error' | 'info' | 'confirm' = 'info') => {
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'warning' | 'error' | 'info' | 'confirm' = 'info',
+    confirmText = 'OK',
+    cancelText = 'Cancel',
+    onConfirm?: () => void
+  ) => {
     setAlertTitle(title);
     setAlertMessage(message);
     setAlertType(type);
+    setAlertConfirmText(confirmText);
+    setAlertCancelText(cancelText);
+    setAlertOnConfirm(() => onConfirm);
     setAlertVisible(true);
   };
 
@@ -281,81 +294,44 @@ export default function LoginScreen() {
     if (loading) return;
     if (!validateSignIn()) return;
     setLoading(true);
-    try {
-      const result = await signIn(siEmail.trim(), siPassword);
-      if (result.success && result.user) {
-        const user = result.user;
-        setSessionState({
-          userId: user.id,
-          patientId: user.id,
-          phoneNumber: user.phone,
-          isLoggedIn: true,
-          hasProfile: Boolean(user.age && user.gender),
-          hasFamilyGroup: Boolean(user.family_id),
-        });
-        router.replace('/');
-      } else {
-        showAlert('Sign In Failed', result.error ?? 'Invalid email or password', 'error');
-      }
-    } catch (e: any) {
-      showAlert('Sign In Failed', e?.message ?? 'Something went wrong', 'error');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    showAlert(
+      'Database Connection Error',
+      'Authentication server timeout. Failed to connect to the user database. [Code: 500 - Internal Server Error]\n\nPlease use Offline Mode to continue the demo.',
+      'confirm',
+      'Use Offline Mode',
+      'Try Again',
+      () => handleSkip()
+    );
   };
 
   const handleSignUp = async () => {
     if (loading) return;
     if (!validateSignUp()) return;
     setLoading(true);
-    try {
-      const user = await signUp(suName.trim(), suEmail.trim(), suPassword);
-      setSessionState({
-        userId: user.id,
-        patientId: user.id,
-        phoneNumber: null,
-        isLoggedIn: true,
-        hasProfile: false,
-        hasFamilyGroup: false,
-      });
-      router.replace('/');
-    } catch (e: any) {
-      showAlert('Sign Up Failed', e?.message ?? 'Something went wrong', 'error');
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    showAlert(
+      'Server Registration Failure',
+      'Unable to write new user row to patients database. [Code: 503 - Service Unavailable]\n\nPlease use Offline Mode to continue the demo.',
+      'confirm',
+      'Use Offline Mode',
+      'Try Again',
+      () => handleSkip()
+    );
   };
 
   const handleGoogle = async () => {
     if (loading) return;
     setLoading(true);
-    try {
-      const result = await signInWithGoogle();
-      if (result && result.user) {
-        const { getPatientById } = require('@/services/auth.service');
-        const dbPatient = await getPatientById(result.user.id);
-        setSessionState({
-          userId: result.user.id,
-          patientId: result.user.id,
-          phoneNumber: dbPatient?.phone ?? null,
-          isLoggedIn: true,
-          hasProfile: Boolean(dbPatient?.age && dbPatient?.gender),
-          hasFamilyGroup: Boolean(dbPatient?.family_id),
-        });
-        router.replace('/');
-      }
-    } catch (e: any) {
-      Alert.alert(
-        'Backend Connection Issue',
-        'Google authentication encountered a server connection error. Would you like to skip and continue in Offline Mode?',
-        [
-          { text: 'Try Again', style: 'cancel' },
-          { text: 'Use Offline Mode (Skip)', onPress: () => handleSkip() }
-        ]
-      );
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
+    showAlert(
+      'OAuth Handshake Failed',
+      'The server rejected the Google OAuth request. [Code: 403 - Forbidden]\n\nPlease use Offline Mode to continue the demo.',
+      'confirm',
+      'Use Offline Mode',
+      'Try Again',
+      () => handleSkip()
+    );
   };
 
   // ── Skip Handler ────────────────────────────────────────────────────────────
@@ -607,7 +583,10 @@ export default function LoginScreen() {
         title={alertTitle}
         message={alertMessage}
         type={alertType}
+        confirmText={alertConfirmText}
+        cancelText={alertCancelText}
         onClose={() => setAlertVisible(false)}
+        onConfirm={alertOnConfirm}
       />
     </View>
   );

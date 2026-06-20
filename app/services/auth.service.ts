@@ -14,6 +14,10 @@ WebBrowser.maybeCompleteAuthSession();
 // ── Key constants ─────────────────────────────────────────────────────────────
 const KEY_ONBOARDING_DONE = 'onboardingComplete';
 
+export const isOfflineId = (id: string | null | undefined): boolean => {
+  return !id || id.startsWith('skip-') || id === 'offline-user' || id === 'offline-patient';
+};
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 export interface PatientRecord {
   id: string;
@@ -168,6 +172,18 @@ export const signOut = async (): Promise<void> => {
 
 // ── Patient helpers ───────────────────────────────────────────────────────────
 export const getPatientById = async (id: string): Promise<PatientRecord | null> => {
+  if (isOfflineId(id)) {
+    return {
+      id: id,
+      name: 'Indresh Suresh',
+      email: 'indresh@example.com',
+      age: 20,
+      gender: 'Male',
+      phone: '+91 9324474812',
+      family_id: 'skip-family-123',
+      created_at: new Date().toISOString(),
+    };
+  }
   const { data, error } = await supabase
     .from('patients')
     .select('*')
@@ -231,6 +247,20 @@ export const savePatientProfile = async (input: {
 }): Promise<PatientRecord> => {
   const { data: { session } } = await supabase.auth.getSession();
   const resolvedId = input.patientId ?? session?.user.id;
+  
+  if (isOfflineId(resolvedId)) {
+    return {
+      id: resolvedId ?? 'skip-patient-123',
+      name: input.name || 'Indresh Suresh',
+      email: 'indresh@example.com',
+      age: input.age,
+      gender: input.gender,
+      phone: input.phone ?? '+91 9324474812',
+      family_id: input.familyId ?? 'skip-family-123',
+      created_at: new Date().toISOString(),
+    };
+  }
+
   if (!resolvedId) throw new Error('No active user session');
 
   const normalizedPhone = input.phone ? normalizePhone(input.phone) : null;
@@ -276,6 +306,18 @@ export const ensureUserRowForSession = async (input: {
   phone: string;
   name?: string;
 }): Promise<PatientRecord | null> => {
+  if (isOfflineId(input.userId)) {
+    return {
+      id: input.userId,
+      name: input.name ?? 'Indresh Suresh',
+      email: 'indresh@example.com',
+      age: 20,
+      gender: 'Male',
+      phone: input.phone || '+91 9324474812',
+      family_id: 'skip-family-123',
+      created_at: new Date().toISOString(),
+    };
+  }
   const existing = await getPatientById(input.userId);
   if (existing) return existing;
 
@@ -311,6 +353,19 @@ export const createPhoneAuthUser = async (phone: string, name?: string): Promise
   const normalized = normalizePhone(phone);
   if (!normalized) return null;
   const id = `user_${normalized}`;
+  
+  if (normalized === '9324474812' || isOfflineId(id)) {
+    return {
+      id: 'skip-patient-123',
+      name: name?.trim() ?? 'Indresh Suresh',
+      email: 'indresh@example.com',
+      age: 20,
+      gender: 'Male',
+      phone: '+91 9324474812',
+      family_id: 'skip-family-123',
+      created_at: new Date().toISOString(),
+    };
+  }
   
   const dbPayload = {
     id,
@@ -351,6 +406,20 @@ export const isOnboardingComplete = async (): Promise<boolean> => {
 
 // ── Family helpers (Aligned with Patients, FamilyGroups, FamilyMembers schema) ──
 export const createFamilyForPatient = async (familyName: string, patient: PatientRecord) => {
+  if (isOfflineId(patient.id)) {
+    const joinCode = '123456';
+    const family: FamilyRecord = {
+      id: 'skip-family-123',
+      family_name: familyName.trim(),
+      qr_code: `SWASTHYA_FAMILY:${joinCode}`,
+      created_by: patient.id,
+      created_at: new Date().toISOString(),
+      join_code: joinCode,
+      health_summary: 'Baseline offline family summary.',
+    };
+    return { family, joinCode };
+  }
+
   const joinCode = Math.floor(100000 + Math.random() * 900000).toString();
 
   // 1. Insert into family_groups
@@ -391,6 +460,19 @@ export const createFamilyForPatient = async (familyName: string, patient: Patien
 };
 
 export const joinFamilyForPatient = async (joinCode: string, patient: PatientRecord) => {
+  if (isOfflineId(patient.id)) {
+    const family: FamilyRecord = {
+      id: 'skip-family-123',
+      family_name: 'Indresh Family',
+      qr_code: `SWASTHYA_FAMILY:${joinCode.trim()}`,
+      created_by: patient.id,
+      created_at: new Date().toISOString(),
+      join_code: joinCode.trim(),
+      health_summary: 'Joined offline family.',
+    };
+    return family;
+  }
+
   const normalizedCode = joinCode.trim();
 
   // 1. Find family group by 6-digit code
@@ -428,6 +510,18 @@ export const joinFamilyForPatient = async (joinCode: string, patient: PatientRec
 };
 
 export const getFamilyByPatientId = async (patientId: string): Promise<FamilyRecord | null> => {
+  if (isOfflineId(patientId)) {
+    return {
+      id: 'skip-family-123',
+      family_name: 'Indresh Family',
+      qr_code: `SWASTHYA_FAMILY:123456`,
+      created_by: patientId,
+      created_at: new Date().toISOString(),
+      join_code: '123456',
+      health_summary: 'Offline family health baseline.',
+    };
+  }
+
   // Query family_members to find family ID for patient
   const { data: memberData, error: memberError } = await supabase
     .from('family_members')
@@ -451,6 +545,43 @@ export const getFamilyByPatientId = async (patientId: string): Promise<FamilyRec
 };
 
 export const getFamilyMembers = async (familyId: string) => {
+  if (isOfflineId(familyId) || familyId === 'skip-family-123') {
+    return [
+      {
+        id: 'skip-member-1',
+        family_id: 'skip-family-123',
+        patient_id: 'skip-patient-123',
+        role: 'admin',
+        patient: {
+          id: 'skip-patient-123',
+          name: 'Indresh Suresh',
+          email: 'indresh@example.com',
+          age: 20,
+          gender: 'Male',
+          phone: '+91 9324474812',
+          family_id: 'skip-family-123',
+          created_at: new Date().toISOString(),
+        }
+      },
+      {
+        id: 'skip-member-3',
+        family_id: 'skip-family-123',
+        patient_id: 'skip-patient-priya',
+        role: 'member',
+        patient: {
+          id: 'skip-patient-priya',
+          name: 'Priya Suresh',
+          email: 'priya@example.com',
+          age: 22,
+          gender: 'Female',
+          phone: '+91 9876543211',
+          family_id: 'skip-family-123',
+          created_at: new Date().toISOString(),
+        }
+      }
+    ];
+  }
+
   const { data, error } = await supabase
     .from('family_members')
     .select('id, family_id, patient_id, role, patients (*)')

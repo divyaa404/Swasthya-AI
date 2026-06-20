@@ -271,14 +271,6 @@ export const DATA_FAMILY_DATA = [
     risk_level: 'Moderate',
   },
   {
-    member_id: 'member-2',
-    member_name: 'Aryan',
-    relation: 'Friend',
-    active_symptoms: ['Hypertension', 'Fatigue'],
-    risk_score: 72,
-    risk_level: 'High',
-  },
-  {
     member_id: 'member-3',
     member_name: 'Priya',
     relation: 'Sister',

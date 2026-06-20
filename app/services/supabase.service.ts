@@ -1,6 +1,10 @@
 import { BACKEND_URL, API_ENDPOINTS } from '@/config/api';
 import { supabase } from '@/services/supabaseClient';
 
+const isOfflineId = (id: string | null | undefined): boolean => {
+    return !id || id.startsWith('skip-') || id === 'offline-user' || id === 'offline-patient';
+};
+
 const safeFetchJson = async (url: string, init?: RequestInit) => {
     try {
         const response = await fetch(url, init);
@@ -12,6 +16,17 @@ const safeFetchJson = async (url: string, init?: RequestInit) => {
 };
 
 export const getPatientProfile = async (id: string) => {
+    if (isOfflineId(id)) {
+        return {
+            id: id,
+            name: 'Indresh Suresh',
+            email: 'indresh@example.com',
+            age: 20,
+            gender: 'Male',
+            phone: '+91 9324474812',
+            created_at: new Date().toISOString(),
+        };
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.PROFILE.GET(id)}`);
     if (data?.status === 'success') {
         return data.profile;
@@ -41,6 +56,9 @@ export const getPatientProfile = async (id: string) => {
 };
 
 export const updatePatientProfile = async (id: string, updates: any) => {
+    if (isOfflineId(id)) {
+        return { status: 'success', updated: true, profile: { id, ...updates } };
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.PROFILE.PATCH(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -76,6 +94,13 @@ export const updatePatientProfile = async (id: string, updates: any) => {
 };
 
 export const getMedicines = async (id: string) => {
+    if (isOfflineId(id)) {
+        return [
+            { id: '1', medicine_name: 'Metformin 500mg', dosage: '500mg', frequency: 'Once daily (morning)', is_critical: true, is_active: true },
+            { id: '2', medicine_name: 'Amlodipine 5mg', dosage: '5mg', frequency: 'Once daily (evening)', is_critical: false, is_active: true },
+            { id: '3', medicine_name: 'Vitamin D3', dosage: '60k', frequency: 'Once weekly', is_critical: false, is_active: true }
+        ];
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.MEDS.LIST(id)}`);
     if (data?.status === 'success') {
         return data.medications;
@@ -103,6 +128,9 @@ export const getMedicines = async (id: string) => {
 };
 
 export const logMedAdherence = async (patientId: string, medicine: string) => {
+    if (isOfflineId(patientId)) {
+        return { status: 'success', logged: true };
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.MEDS.LOG}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,6 +155,21 @@ export const logMedAdherence = async (patientId: string, medicine: string) => {
 };
 
 export const addMedicine = async (patientId: string, medicineData: any) => {
+    if (isOfflineId(patientId)) {
+        return { 
+            status: 'success', 
+            added: true, 
+            medicine: { 
+                id: `offline-med-${Date.now()}`, 
+                patient_id: patientId, 
+                medicine_name: medicineData.medicine_name || medicineData.name, 
+                dosage: medicineData.dosage || 'Standard', 
+                frequency: medicineData.frequency || 'Once daily', 
+                is_critical: medicineData.is_critical || false, 
+                is_active: true 
+            } 
+        };
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.MEDS.ADD(patientId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,6 +199,9 @@ export const addMedicine = async (patientId: string, medicineData: any) => {
 };
 
 export const getPendingCheckins = async (id: string) => {
+    if (isOfflineId(id)) {
+        return [];
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.CHECKINS.PENDING(id)}`);
     if (data?.status === 'success') {
         return data.questions;
@@ -176,6 +222,9 @@ export const getPendingCheckins = async (id: string) => {
 };
 
 export const submitCheckin = async (patientId: string, answers: any[]) => {
+    if (isOfflineId(patientId)) {
+        return { status: 'success', submitted: true };
+    }
     const data = await safeFetchJson(`${BACKEND_URL}${API_ENDPOINTS.CHECKINS.SUBMIT}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

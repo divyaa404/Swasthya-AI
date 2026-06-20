@@ -371,8 +371,15 @@ export default function HomeScreen() {
     try {
       setIsLoadingProfile(true);
       const resolvedId = user?.id || patientId;
-      if (!resolvedId) {
-        setProfile({ name: 'Indresh' });
+      if (!resolvedId || resolvedId.startsWith('skip-') || resolvedId === 'offline-user' || resolvedId === 'offline-patient') {
+        setProfile({ 
+          id: resolvedId || 'skip-patient-123', 
+          name: 'Indresh Suresh', 
+          full_name: 'Indresh Suresh', 
+          age: 20, 
+          gender: 'Male', 
+          phone_number: '+91 9324474812' 
+        });
         setIsLoadingProfile(false);
         return;
       }
@@ -401,6 +408,49 @@ export default function HomeScreen() {
 
   const fetchFamilyData = async (resolvedId: string) => {
     try {
+      if (!resolvedId || resolvedId.startsWith('skip-') || resolvedId === 'offline-user' || resolvedId === 'offline-patient') {
+        setFamilyData({
+          id: 'skip-family-123',
+          family_name: 'Indresh Family',
+          health_summary: 'Overall family health is stable. Elders have minor chronic conditions.',
+        });
+        setFamilyMembers([
+          {
+            id: 'm_1',
+            name: 'Indresh Suresh',
+            role: 'Self',
+            risk: 'Moderate',
+            gender: 'Male',
+            healthSummary: 'Baseline health is stable. Moderate anxiety or headache symptoms recorded.',
+          },
+          {
+            id: 'm_3',
+            name: 'Monish',
+            role: 'Grandfather (Family)',
+            risk: 'Low',
+            gender: 'Male',
+            healthSummary: 'Maintains healthy blood pressure. Mild age-related fatigue.',
+          },
+          {
+            id: 'm_4',
+            name: 'Divya',
+            role: 'Mother (Family)',
+            risk: 'Low',
+            gender: 'Female',
+            healthSummary: 'Regular vitamin checkups complete. No acute symptoms.',
+          },
+          {
+            id: 'm_5',
+            name: 'Ankita',
+            role: 'Child (Family)',
+            risk: 'Low',
+            gender: 'Female',
+            healthSummary: 'Healthy growth metrics, fully vaccinated.',
+          }
+        ]);
+        return;
+      }
+
       const { data: memberRecord } = await supabase
         .from('family_members')
         .select('family_id')

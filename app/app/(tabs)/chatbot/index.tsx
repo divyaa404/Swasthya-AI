@@ -101,23 +101,143 @@ const MOCK_HISTORY: HistoryItem[] = [
 ];
 
 const VOICE_LOCALES = {
-  'hi-IN': {
-    greeting: "नमस्ते! मैं आपका स्वास्थ्य वॉइस असिस्टेंट हूँ। आज आप कैसा महसूस कर रहे हैं?",
-    listening: "सुन रहा हूँ... बोलिए!",
-    thinking: "सोच रहा हूँ...",
-    speaking: "बोल रहा हूँ...",
-    unheard: "मैंने कुछ नहीं सुना। कृपया फिर से बोलें...",
-    instruction: "बोलना बंद करें या सबमिट करने के लिए केंद्र पर टैप करें",
-    statusListening: "सुन रहा हूँ...",
-  },
   'en-US': {
+    label: 'English',
     greeting: "Hello! I am your health voice assistant. How are you feeling today?",
     listening: "Listening... Speak now!",
     thinking: "Thinking...",
     speaking: "Speaking...",
     unheard: "I didn't hear anything. Please try speaking again...",
-    instruction: "Tap the core to stop speaking and submit",
+    instruction: "Speak now, or use the shortcuts below",
     statusListening: "Listening...",
+    suggestions: [
+      "I have stomach pain since yesterday",
+      "My chest feels tight and uneasy",
+      "Should I take my medications now?"
+    ],
+    fallbackReplies: {
+      bp: "Your blood pressure seems stable. Continue taking your medication as prescribed and monitor daily.",
+      headache: "Headaches can be related to blood pressure fluctuations or dehydration. I've noted this down. How long have you felt this?",
+      fatigue: "Fatigue can be linked to sleep deprivation or blood sugar levels. Are you getting 7-8 hours of sleep?",
+      med: "Please ensure you take your medicines on time as per your doctor's prescription. Have you taken your dose today?",
+      pain: "I'm sorry to hear that. Where is the pain located and how severe is it on a scale of 1 to 10?",
+      default: "Thank you for sharing. I am logging this symptom in your health profile. Is there anything else?"
+    }
+  },
+  'hi-IN': {
+    label: 'हिंदी',
+    greeting: "नमस्ते! मैं आपका स्वास्थ्य वॉइस असिस्टेंट हूँ। आज आप कैसा महसूस कर रहे हैं?",
+    listening: "सुन रहा हूँ... बोलिए!",
+    thinking: "सोच रहा हूँ...",
+    speaking: "बोल रहा हूँ...",
+    unheard: "मैंने कुछ नहीं सुना। कृपया फिर से बोलें...",
+    instruction: "कृपया बोलें, या नीचे दिए गए शॉर्टकट्स का उपयोग करें",
+    statusListening: "सुन रहा हूँ...",
+    suggestions: [
+      "मुझे कल से पेट में दर्द है",
+      "मेरी छाती में खिंचाव महसूस हो रहा है",
+      "क्या मुझे अपनी दवाएं अभी लेनी चाहिए?"
+    ],
+    fallbackReplies: {
+      bp: "आपका रक्तचाप ठीक लग रहा है। अपनी दवाएं नियमित रूप से लेते रहें और समय-समय पर जांच करते रहें।",
+      headache: "सिरदर्द रक्तचाप में उतार-चढ़ाव या निर्जलीकरण से जुड़ा हो सकता है। मैंने इस लक्षण को नोट कर लिया है। आप कब से ऐसा महसूस कर रहे हैं?",
+      fatigue: "थकान मधुमेह या नींद की कमी के कारण हो सकती है। क्या आप 7-8 घंटे सो रहे हैं?",
+      med: "याद रखें कि डॉक्टर के परामर्श के अनुसार दवाएं समय पर लें। क्या आपने आज की खुराक ले ली है?",
+      pain: "मुझे यह सुनकर खेद है। दर्द कहां हो रहा है और यह कितना गंभीर है (1 से 10 के पैमाने पर)?",
+      default: "साझा करने के लिए धन्यवाद। मैं इस जानकारी को आपके दैनिक स्वास्थ्य प्रोफाइल में दर्ज कर रहा हूं। क्या कोई अन्य लक्षण हैं?"
+    }
+  },
+  'mr-IN': {
+    label: 'मराठी',
+    greeting: "नमस्कार! मी तुमचा स्वास्थ्या AI सहाय्यक आहे. आज तुम्हाला कसे वाटत आहे?",
+    listening: "ऐकत आहे... बोला!",
+    thinking: "विचार करत आहे...",
+    speaking: "बोलत आहे...",
+    unheard: "मला काही ऐकू आले नाही. कृपया पुन्हा बोला...",
+    instruction: "कृपया बोला, किंवा खालील पर्यायांचा वापर करा",
+    statusListening: "ऐकत आहे...",
+    suggestions: [
+      "माझ्या डोक्यात खूप दुखत आहे",
+      "मला खूप थकवा जाणवत आहे",
+      "मी माझी औषधे वेळेवर घेतली पाहिजेत का?"
+    ],
+    fallbackReplies: {
+      bp: "तुमचा रक्तदाब स्थिर वाटत आहे. तुमची औषधे वेळेवर घेत राहा आणि नियमित तपासणी करा.",
+      headache: "डोकेदुखी रक्तदाबातील बदलांमुळे किंवा डिहायड्रेशनमुळे असू शकते. मी हे नोंदवून घेतले आहे. तुम्हाला कधीपासून त्रास होत आहे?",
+      fatigue: "थकवा अपुऱ्या झोपेमुळे किंवा साखरेच्या पातळीमुळे असू शकतो. तुम्ही ७-८ तास झोप घेत आहात का?",
+      med: "कृपया तुमची औषधे डॉक्टरांच्या सल्ल्यानुसार वेळेवर घ्या. तुम्ही आजचे औषध घेतले आहे का?",
+      pain: "हे ऐकून वाईट वाटले. वेदना कुठे होत आहेत आणि १ ते १० च्या स्केलवर ती किती तीव्र आहे?",
+      default: "माहिती शेअर केल्याबद्दल धन्यवाद. मी हे तुमच्या आरोग्य प्रोफाइलमध्ये नोंदवत आहे. इतर काही लक्षणे आहेत का?"
+    }
+  },
+  'gu-IN': {
+    label: 'ગુજરાતી',
+    greeting: "નમસ્તે! હું તમારો સ્વાસ્થ્ય AI સહાયક છું. આજે તમને કેવું લાગે છે?",
+    listening: "સાંભળી રહ્યું છે... બોલો!",
+    thinking: "વિચારી રહ્યું છે...",
+    speaking: "બોલી રહ્યું છે...",
+    unheard: "મને કંઈ સંભળાયું નથી. કૃપા કરીને ફરીથી બોલો...",
+    instruction: "કૃપા કરીને બોલો, અથવા નીચેના શૉર્ટકટ્સનો ઉપયોગ કરો",
+    statusListening: "સાંભળી રહ્યું છે...",
+    suggestions: [
+      "મને માથામાં દુખાવો થાય છે",
+      "મને ખૂબ જ થાક લાગે છે",
+      "શું મારે સવારની દવા લેવી જોઈએ?"
+    ],
+    fallbackReplies: {
+      bp: "તમારું બ્લડ પ્રેશર સામાન્ય લાગે છે. તમારી દવાઓ નિયમિત લેતા રહો અને તપાસ કરતા રહો.",
+      headache: "માથાનો દુખાવો બ્લડ પ્રેશરમાં ફેરફાર અથવા ડિહાઇડ્રેશનના કારણે હોઈ શકે છે. મેં આ નોંધી લીધું છે. તમે ક્યારથી આવું અનુભવો છો?",
+      fatigue: "થાક અપૂરતી ઊંઘ અથવા બ્લડ સુગરના કારણે હોઈ શકે છે. શું તમે ૭-૮ કલાક ઊંઘો છો?",
+      med: "કૃપા કરીને ડૉક્ટરના પ્રિસ્ક્રિપ્શન મુજબ તમારી દવાઓ સમયસર લો. શું તમે આજની દવા લીધી છે?",
+      pain: "આ સાંભળીને દુઃխ થયું. દુખાવો ક્યાં થાય છે અને ૧ થી ૧૦ ના સ્કેલ પર કેટલો તીવ્ર છે?",
+      default: "માહિતી શેર કરવા બદલ આભાર. હું આ તમારા હેલ્થ પ્રોફાઇલમાં નોંધી રહ્યો છું. શું અન્ય કોઈ લક્ષણો છે?"
+    }
+  },
+  'ta-IN': {
+    label: 'தமிழ்',
+    greeting: "வணக்கம்! நான் உங்கள் சுவஸ்தியா AI உதவியாளர். இன்று நீங்கள் எப்படி உணர்கிறீர்கள்?",
+    listening: "கேட்டுக்கொண்டிருக்கிறது... பேசுங்கள்!",
+    thinking: "யோசித்துக் கொண்டிருக்கிறது...",
+    speaking: "பேசிக்கொண்டிருக்கிறது...",
+    unheard: "எனக்கு எதுவும் கேட்கவில்லை. தயவுசெய்து மீண்டும் பேசுங்கள்...",
+    instruction: "பேசுங்கள், அல்லது கீழே உள்ள குறுக்குவழிகளைப் பயன்படுத்தவும்",
+    statusListening: "கேட்டுக்கொண்டிருக்கிறது...",
+    suggestions: [
+      "எனக்கு தலைவலி இருக்கிறது",
+      "எனக்கு மிகவும் சோர்வாக இருக்கிறது",
+      "நான் காலை மருந்தை எடுத்துக்கொள்ள வேண்டுமா?"
+    ],
+    fallbackReplies: {
+      bp: "உங்கள் இரத்த அழுத்தம் சீராக இருப்பது போல் தெரிகிறது. மருந்துகளைத் தவறாமல் உட்கொண்டு பரிசோதித்துக் கொள்ளுங்கள்.",
+      headache: "தலைவலி இரத்த அழுத்த மாறுபாடுகள் அல்லது நீரிழப்பு காரணமாக இருக்கலாம். நான் இதை குறித்துக் கொள்கிறேன். எவ்வளவு காலமாக இந்த வலி உள்ளது?",
+      fatigue: "சோர்வு தூக்கமின்மை அல்லது இரத்த சர்க்கரை அளவோடு தொடர்புடையதாக இருக்கலாம். நீங்கள் 7-8 மணிநேரம் தூங்குகிறீர்களா?",
+      med: "மருத்துவர் பரிந்துரைத்தபடி உங்கள் மருந்துகளை சரியான நேரத்தில் உட்கொள்ளுங்கள். இன்றைய மருந்துகளை எடுத்துக்கொண்டீர்களா?",
+      pain: "அதை கேட்க வருத்தமாக இருக்கிறது. வலி எங்கே இருக்கிறது, 1 முதல் 10 வரையிலான அளவில் எவ்வளவு தீவிரமாக உள்ளது?",
+      default: "தகவலைப் பகிர்ந்தமைకు நன்றி. இதை உங்கள் சுகாதார சுயவிவரத்தில் பதிவு செய்கிறேன். வேறு ஏదేனும் அறிகுறிகள் உள்ளదా?"
+    }
+  },
+  'te-IN': {
+    label: 'తెలుగు',
+    greeting: "నమస్తే! నేను మీ స్వస్థ్య AI సహాయకుడిని. ఈ రోజు మీకు ఎలా ఉంది?",
+    listening: "వింటున్నాను... మాట్లాడండి!",
+    thinking: "ఆలోచిస్తోంది...",
+    speaking: "మాట్లాడుతోంది...",
+    unheard: "నాకు ఏమీ వినిపించలేదు. దయచేసి మళ్లీ మాట్లాడండి...",
+    instruction: "మాట్లాడండి, లేదా క్రింది సత్వరమార్గాలను ఉపయోగించండి",
+    statusListening: "వింటున్నాను...",
+    suggestions: [
+      "నాకు తలనొప్పిగా ఉంది",
+      "నేను చాలా అలసటగా ఉన్నాను",
+      "నేను ఉదయం మందులు వేసుకోవాలా?"
+    ],
+    fallbackReplies: {
+      bp: "మీ రక్తపోటు సాధారణంగానే ఉంది. మీ మందులను క్రమం తప్పకుండా వాడండి మరియు క్రమం తప్పకుండా పరీక్షించుకోండి.",
+      headache: "తలనొప్పి రక్తపోటులో మార్పులు లేదా నిర్జలీకరణం వల్ల కావచ్చు. నేను ఈ లక్షణాన్ని నమోదు చేసుకున్నాను. మీకు ఎంతకాలంగా ఉంది?",
+      fatigue: "అలసట నిద్రలేమి లేదా రక్తంలో చక్కెర స్థాయిల వల్ల కావచ్చు. మీరు రోజుకు 7-8 గంటలు నిద్రపోతున్నారా?",
+      med: "దయచేసి మీ మందులను వైద్యుల సలహా మేరకు సమయానికి తీసుకోండి. ఈ రోజు మీ డోస్ తీసుకున్నారా?",
+      pain: "అలా జరగడం బాధాకరం. నొప్పి ఎక్కడ వస్తోంది మరియు 1 నుండి 10 స్కేలులో ఎంత తీవ్రంగా ఉంది?",
+      default: "సమాచారాన్ని పంచుకున్నందుకు ధన్యవాదాలు. నేను దీనిని మీ ఆరోగ్య ప్రొఫైల్లో నమోదు చేస్తున్నాను. ఇతర లక్షణాలు ఏమైనా ఉన్నాయా?"
+    }
   }
 };
 
@@ -230,8 +350,9 @@ export default function ChatScreen() {
   // Voice-to-Voice states
   const [voiceModeActive, setVoiceModeActive] = useState(false);
   const [voiceState, setVoiceState] = useState<'listening' | 'thinking' | 'speaking' | 'paused'>('listening');
-  const [voiceLang, setVoiceLang] = useState<'hi-IN' | 'en-US'>('hi-IN');
-  const [voiceSubtitles, setVoiceSubtitles] = useState('शुरू हो रहा है...');
+  const [voiceLang, setVoiceLang] = useState<'en-US' | 'hi-IN' | 'mr-IN' | 'gu-IN' | 'ta-IN' | 'te-IN'>('en-US');
+  const [voiceSubtitles, setVoiceSubtitles] = useState('Starting up...');
+  const [voiceInputText, setVoiceInputText] = useState('');
 
   // Concentric circle animations
   const blobScale1 = useRef(new Animated.Value(1)).current;
@@ -300,6 +421,111 @@ export default function ChatScreen() {
       }
     };
   }, [voiceModeActive, voiceState, voiceLang, isVoiceAvailable]);
+
+  // Web Speech Recognition & Multilingual Fallback handlers
+  const webSpeechRecRef = useRef<any>(null);
+
+  const startVoiceCapture = async (lang: string): Promise<boolean> => {
+    latestVoiceSpeechRef.current = '';
+    
+    if (Platform.OS === 'web') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          if (webSpeechRecRef.current) {
+            webSpeechRecRef.current.abort();
+          }
+          const rec = new SpeechRecognition();
+          rec.lang = lang;
+          rec.continuous = false;
+          rec.interimResults = false;
+          
+          rec.onstart = () => {
+            console.log('Web speech recognition started');
+            setVoiceState('listening');
+          };
+          
+          rec.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            console.log('Web speech result:', transcript);
+            latestVoiceSpeechRef.current = transcript;
+            setVoiceSubtitles(transcript);
+          };
+          
+          rec.onerror = (event: any) => {
+            console.error('Web speech error:', event);
+            if (voiceModeActive && voiceState === 'listening') {
+              setVoiceSubtitles((VOICE_LOCALES as any)[voiceLang].unheard);
+              setTimeout(() => { startListeningLoop(); }, 1500);
+            }
+          };
+          
+          rec.onend = () => {
+            console.log('Web speech recognition ended');
+            if (voiceModeActive) {
+              const finalSpeech = latestVoiceSpeechRef.current.trim();
+              if (finalSpeech) {
+                processUserVoiceInput(finalSpeech);
+              } else {
+                setVoiceSubtitles((VOICE_LOCALES as any)[voiceLang].unheard);
+                setTimeout(() => { startListeningLoop(); }, 1500);
+              }
+            }
+          };
+          
+          webSpeechRecRef.current = rec;
+          rec.start();
+          return true;
+        } catch (err) {
+          console.error("Web SpeechRecognition start error:", err);
+        }
+      }
+    } else if (isVoiceAvailable) {
+      try {
+        await Voice.stop().catch(() => {});
+        await Voice.start(lang);
+        return true;
+      } catch (e) {
+        console.error("Native Voice start error:", e);
+      }
+    }
+    return false;
+  };
+
+  const stopVoiceCapture = async () => {
+    if (Platform.OS === 'web') {
+      if (webSpeechRecRef.current) {
+        webSpeechRecRef.current.stop();
+      }
+    } else if (isVoiceAvailable) {
+      try {
+        await Voice.stop().catch(() => {});
+      } catch (e) {}
+    }
+  };
+
+  const getMultilingualFallback = (input: string, lang: string): string => {
+    const msg = input.toLowerCase();
+    const config = (VOICE_LOCALES as any)[lang] || VOICE_LOCALES['en-US'];
+    const r = config.fallbackReplies;
+    
+    if (msg.includes('blood pressure') || msg.includes('bp') || msg.includes('रक्तचाप') || msg.includes('बीपी') || msg.includes('રક્તચાપ') || msg.includes('இரத்த அழுத்தம்') || msg.includes('రక్తపోటు') || msg.includes('రక్త దాబ')) {
+      return r.bp;
+    }
+    if (msg.includes('headache') || msg.includes('head') || msg.includes('सिरदर्द') || msg.includes('सिर दर्द') || msg.includes('डोकेदुखी') || msg.includes('માથાનો દુખાવો') || msg.includes('தலைவலி') || msg.includes('తలనొప్పి')) {
+      return r.headache;
+    }
+    if (msg.includes('tired') || msg.includes('fatigue') || msg.includes('energy') || msg.includes('थकान') || msg.includes('कमजोरी') || msg.includes('थकवा') || msg.includes('થાક') || msg.includes('சோர்வு') || msg.includes('అలసట')) {
+      return r.fatigue;
+    }
+    if (msg.includes('medic') || msg.includes('tablet') || msg.includes('pill') || msg.includes('दवा') || msg.includes('गोली') || msg.includes('औषध') || msg.includes('દવા') || msg.includes('மருந்து') || msg.includes('మందు')) {
+      return r.med;
+    }
+    if (msg.includes('pain') || msg.includes('hurt') || msg.includes('ache') || msg.includes('दर्द') || msg.includes('वेदना') || msg.includes('દુખાવો') || msg.includes('வலி') || msg.includes('నొప్పి')) {
+      return r.pain;
+    }
+    return r.default;
+  };
 
   // Concentric circle animation loops
   useEffect(() => {
@@ -383,30 +609,22 @@ export default function ChatScreen() {
     } else {
       Speech.stop();
       if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
-      if (isVoiceAvailable) {
-        Voice.stop().catch(() => {});
-      }
+      stopVoiceCapture();
     }
     return () => {
       Speech.stop();
       if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
-      if (isVoiceAvailable) {
-        Voice.stop().catch(() => {});
-      }
+      stopVoiceCapture();
     };
-  }, [voiceModeActive, voiceLang, isVoiceAvailable]);
+  }, [voiceModeActive, voiceLang]);
 
   const startVoiceGreeting = async () => {
-    if (isVoiceAvailable) {
-      try {
-        await Voice.stop();
-      } catch (e) {}
-    }
+    await stopVoiceCapture();
     await Speech.stop();
     if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
 
     setVoiceState('speaking');
-    const greeting = VOICE_LOCALES[voiceLang].greeting;
+    const greeting = (VOICE_LOCALES as any)[voiceLang].greeting;
     setVoiceSubtitles(greeting);
 
     const systemMsg: Message = {
@@ -432,35 +650,14 @@ export default function ChatScreen() {
   const startListeningLoop = async () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setVoiceState('listening');
-    setVoiceSubtitles(VOICE_LOCALES[voiceLang].listening);
+    setVoiceSubtitles((VOICE_LOCALES as any)[voiceLang].listening);
     latestVoiceSpeechRef.current = '';
 
-    let voiceStarted = false;
-    if (isVoiceAvailable) {
-      try {
-        await Voice.start(voiceLang);
-        voiceStarted = true;
-      } catch (e) {
-        console.error("Voice start error in overlay:", e);
-      }
-    }
+    const voiceStarted = await startVoiceCapture(voiceLang);
 
     if (!voiceStarted) {
-      const simulatedUserSayings = voiceLang === 'hi-IN' ? [
-        "मुझे कल रात से पेट में दर्द और बेचैनी हो रही है",
-        "मेरी छाती में थोड़ा खिंचाव और घबराहट महसूस हो रही है",
-        "क्या मुझे अपनी सुबह की दवा लेनी चाहिए?"
-      ] : [
-        "I have stomach pain and discomfort since last night",
-        "My chest feels a bit tight and uneasy",
-        "Should I take my morning medicine?"
-      ];
-
-      if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
-      voiceInteractionTimer.current = setTimeout(() => {
-        const randomSaying = simulatedUserSayings[Math.floor(Math.random() * simulatedUserSayings.length)];
-        processUserVoiceInput(randomSaying);
-      }, 4500);
+      console.log("Speech recognition not available on this platform. Displaying manual fallback options.");
+      setVoiceSubtitles("Speech recognition is not active on this device. You can type your query below or choose one of the suggestions.");
     }
   };
 
@@ -519,11 +716,11 @@ export default function ChatScreen() {
       });
       if (!response.ok) throw new Error("Backend connection issue");
       const data = await response.json();
-      const reply = data.bot_reply || (voiceLang === 'hi-IN' ? getFallbackReplyHindi(spokenText) : getFallbackReply(spokenText));
+      const reply = data.bot_reply || getMultilingualFallback(spokenText, voiceLang);
       speakAIVoiceResponse(reply);
     } catch (e) {
       console.error(e);
-      const fallback = voiceLang === 'hi-IN' ? getFallbackReplyHindi(spokenText) : getFallbackReply(spokenText);
+      const fallback = getMultilingualFallback(spokenText, voiceLang);
       speakAIVoiceResponse(fallback);
     }
   };
@@ -850,19 +1047,46 @@ export default function ChatScreen() {
               <Ionicons name="close-circle" size={36} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.voiceHeaderTitle}>Voice Mode</Text>
-            
-            <TouchableOpacity
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                setVoiceLang(prev => prev === 'hi-IN' ? 'en-US' : 'hi-IN');
-              }}
-              style={styles.langToggleButton}
+            <View style={{ width: 36 }} />
+          </View>
+
+          {/* Horizontal Language Selector */}
+          <View style={styles.langSelectorContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.langSelectorScroll}
             >
-              <Ionicons name="language" size={16} color="#FFFFFF" style={{ marginRight: 4 }} />
-              <Text style={styles.langToggleText}>
-                {voiceLang === 'hi-IN' ? 'English' : 'हिंदी'}
-              </Text>
-            </TouchableOpacity>
+              {Object.entries(VOICE_LOCALES).map(([code, config]) => {
+                const isSelected = voiceLang === code;
+                return (
+                  <TouchableOpacity
+                    key={code}
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setVoiceLang(code as any);
+                    }}
+                    style={[
+                      styles.langChip,
+                      isSelected && styles.langChipSelected
+                    ]}
+                  >
+                    <Ionicons 
+                      name="language" 
+                      size={13} 
+                      color={isSelected ? '#0F172A' : '#8AA0BC'} 
+                      style={{ marginRight: 4 }} 
+                    />
+                    <Text style={[
+                      styles.langChipText,
+                      isSelected && styles.langChipTextSelected
+                    ]}>
+                      {config.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           <View style={styles.voiceVisualizerContainer}>
@@ -900,23 +1124,11 @@ export default function ChatScreen() {
               <TouchableOpacity
                 onPress={async () => {
                   if (voiceState === 'listening') {
-                    if (isVoiceAvailable) {
-                      try {
-                        await Voice.stop();
-                      } catch (e) {
-                        console.error(e);
-                      }
+                    if (isVoiceAvailable || Platform.OS === 'web') {
+                      await stopVoiceCapture();
                     } else {
-                      if (voiceInteractionTimer.current) clearTimeout(voiceInteractionTimer.current);
-                      const simulatedUserSayings = voiceLang === 'hi-IN' ? [
-                        "मुझे कल रात से पेट में दर्द और बेचैनी हो रही है",
-                        "मेरी छाती में थोड़ा खिंचाव और घबराहट महसूस हो रही है",
-                        "क्या मुझे अपनी सुबह की दवा लेनी चाहिए?"
-                      ] : [
-                        "I have stomach pain and discomfort since last night",
-                        "My chest feels a bit tight and uneasy",
-                        "Should I take my morning medicine?"
-                      ];
+                      // Manual selection fallback
+                      const simulatedUserSayings = (VOICE_LOCALES as any)[voiceLang].suggestions;
                       const randomSaying = simulatedUserSayings[Math.floor(Math.random() * simulatedUserSayings.length)];
                       processUserVoiceInput(randomSaying);
                     }
@@ -948,10 +1160,10 @@ export default function ChatScreen() {
 
             <Text style={styles.voiceStatusText}>
               {voiceState === 'listening'
-                ? VOICE_LOCALES[voiceLang].statusListening
+                ? (VOICE_LOCALES as any)[voiceLang].statusListening
                 : voiceState === 'thinking'
-                ? VOICE_LOCALES[voiceLang].thinking
-                : VOICE_LOCALES[voiceLang].speaking}
+                ? (VOICE_LOCALES as any)[voiceLang].thinking
+                : (VOICE_LOCALES as any)[voiceLang].speaking}
             </Text>
           </View>
 
@@ -965,9 +1177,66 @@ export default function ChatScreen() {
             </ScrollView>
           </View>
 
-          <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-              {voiceState === 'listening' ? VOICE_LOCALES[voiceLang].instruction : ''}
+          {/* Suggestion Chips and Manual Input Fallback */}
+          {voiceState === 'listening' && (
+            <View style={styles.suggestionsContainer}>
+              <Text style={styles.suggestionsTitle}>Suggestions:</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.suggestionsScroll}
+              >
+                {(VOICE_LOCALES as any)[voiceLang].suggestions.map((suggestion: string, idx: number) => (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => {
+                      processUserVoiceInput(suggestion);
+                    }}
+                    style={styles.suggestionChip}
+                  >
+                    <Text style={styles.suggestionText}>{suggestion}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
+          {voiceState === 'listening' && !isVoiceAvailable && Platform.OS !== 'web' && (
+            <View style={styles.voiceInputRow}>
+              <TextInput
+                style={styles.voiceTextInput}
+                placeholder="Type your symptoms/query..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={voiceInputText}
+                onChangeText={setVoiceInputText}
+                onSubmitEditing={() => {
+                  if (voiceInputText.trim()) {
+                    processUserVoiceInput(voiceInputText.trim());
+                    setVoiceInputText('');
+                  }
+                }}
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  if (voiceInputText.trim()) {
+                    processUserVoiceInput(voiceInputText.trim());
+                    setVoiceInputText('');
+                  }
+                }}
+                style={styles.voiceSendButton}
+              >
+                <Ionicons name="send" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ paddingVertical: 12, alignItems: 'center' }}>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center', paddingHorizontal: 20 }}>
+              {voiceState === 'listening' 
+                ? (isVoiceAvailable || Platform.OS === 'web' 
+                    ? (VOICE_LOCALES as any)[voiceLang].instruction 
+                    : "Speech recognition unavailable. Tap a suggestion above or type below.")
+                : ''}
             </Text>
           </View>
         </SafeAreaView>
@@ -1317,20 +1586,92 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
-  langToggleButton: {
+  langSelectorContainer: {
+    height: 48,
+    marginVertical: 4,
+  },
+  langSelectorScroll: {
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    gap: 8,
+  },
+  langChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: 'rgba(255,255,255,0.1)',
   },
-  langToggleText: {
-    color: '#FFFFFF',
+  langChipSelected: {
+    backgroundColor: '#06B6D4',
+    borderColor: '#22D3EE',
+  },
+  langChipText: {
+    color: '#8AA0BC',
     fontSize: 12,
     fontWeight: '600',
+  },
+  langChipTextSelected: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  suggestionsContainer: {
+    paddingHorizontal: 20,
+    marginVertical: 12,
+  },
+  suggestionsTitle: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  suggestionsScroll: {
+    gap: 8,
+    paddingRight: 20,
+  },
+  suggestionChip: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  suggestionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+  },
+  voiceInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginHorizontal: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  voiceTextInput: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    height: 40,
+    paddingRight: 8,
+  },
+  voiceSendButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#0474FC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   voiceVisualizerContainer: {
     flex: 1.5,
