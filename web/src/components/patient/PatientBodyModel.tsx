@@ -1,7 +1,7 @@
 // src/components/patient/PatientBodyModel.tsx
 import React, { useRef, useState, useMemo, Component, ReactNode } from 'react';
 import { Canvas, useFrame, extend } from '@react-three/fiber';
-import { useGLTF, OrbitControls } from '@react-three/drei';
+import { useGLTF, OrbitControls, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 export interface HeatPoint {
@@ -147,6 +147,7 @@ const MannequinFallback: React.FC<{
   selectedZoneLabel?: string;
 }> = ({ heatPoints, onZoneClick, selectedZoneLabel }) => {
   const materialRef = useRef<any>(null);
+  const groupRef = useRef<THREE.Group>(null);
 
   // Model base color is ALWAYS white
   const baseColor = useMemo(() => new THREE.Color('#f8fafc'), []);
@@ -157,6 +158,10 @@ const MannequinFallback: React.FC<{
   }, [selectedZoneLabel, heatPoints]);
 
   useFrame((state) => {
+    // Slow Y-axis rotation (360 degrees)
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.12;
+    }
     if (materialRef.current) {
       materialRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       materialRef.current.uniforms.uBaseColor.value = baseColor;
@@ -186,76 +191,170 @@ const MannequinFallback: React.FC<{
     onZoneClick(hp);
   };
 
+  // Local coordinates calculation for activeSelectedZone
+  const activeSelectedPoint = useMemo(() => {
+    if (!selectedZoneLabel) return null;
+    const hp = heatPoints.find(p => p.label === selectedZoneLabel);
+    if (!hp) return null;
+    const point = new THREE.Vector3(...hp.position);
+    point.x = 0;
+    point.z = 0;
+    return { hp, localPos: point };
+  }, [selectedZoneLabel, heatPoints]);
+
   return (
     <group position={[0, -0.9, 0]}>
-      {/* Head */}
-      <mesh material={material} position={[0, 1.72, 0]}>
-        <sphereGeometry args={[0.13, 16, 16]} />
-      </mesh>
-      {/* Neck */}
-      <mesh material={material} position={[0, 1.56, 0]}>
-        <cylinderGeometry args={[0.04, 0.05, 0.14, 12]} />
-      </mesh>
-      {/* Torso */}
-      <mesh material={material} position={[0, 1.17, 0]}>
-        <cylinderGeometry args={[0.18, 0.15, 0.55, 16]} />
-      </mesh>
-      {/* Pelvis */}
-      <mesh material={material} position={[0, 0.85, 0]}>
-        <cylinderGeometry args={[0.15, 0.12, 0.18, 16]} />
-      </mesh>
-      {/* Left upper arm */}
-      <mesh material={material} position={[-0.26, 1.22, 0]} rotation={[0, 0, 0.1]}>
-        <cylinderGeometry args={[0.04, 0.035, 0.3, 10]} />
-      </mesh>
-      {/* Right upper arm */}
-      <mesh material={material} position={[0.26, 1.22, 0]} rotation={[0, 0, -0.1]}>
-        <cylinderGeometry args={[0.04, 0.035, 0.3, 10]} />
-      </mesh>
-      {/* Left forearm */}
-      <mesh material={material} position={[-0.28, 0.88, 0]}>
-        <cylinderGeometry args={[0.03, 0.025, 0.28, 10]} />
-      </mesh>
-      {/* Right forearm */}
-      <mesh material={material} position={[0.28, 0.88, 0]}>
-        <cylinderGeometry args={[0.03, 0.025, 0.28, 10]} />
-      </mesh>
-      {/* Left thigh */}
-      <mesh material={material} position={[-0.1, 0.6, 0]}>
-        <cylinderGeometry args={[0.065, 0.055, 0.35, 12]} />
-      </mesh>
-      {/* Right thigh */}
-      <mesh material={material} position={[0.1, 0.6, 0]}>
-        <cylinderGeometry args={[0.065, 0.055, 0.35, 12]} />
-      </mesh>
-      {/* Left shin */}
-      <mesh material={material} position={[-0.1, 0.24, 0]}>
-        <cylinderGeometry args={[0.045, 0.035, 0.35, 12]} />
-      </mesh>
-      {/* Right shin */}
-      <mesh material={material} position={[0.1, 0.24, 0]}>
-        <cylinderGeometry args={[0.045, 0.035, 0.35, 12]} />
-      </mesh>
-      {/* Left foot */}
-      <mesh material={material} position={[-0.1, 0.04, 0.05]}>
-        <boxGeometry args={[0.08, 0.04, 0.15]} />
-      </mesh>
-      {/* Right foot */}
-      <mesh material={material} position={[0.1, 0.04, 0.05]}>
-        <boxGeometry args={[0.08, 0.04, 0.15]} />
-      </mesh>
-
-      {/* Interactive Raycast Colliders (invisible but large for easy click targets) */}
-      {heatPoints.map((hp) => (
-        <mesh 
-          key={hp.id} 
-          position={hp.position}
-          onPointerDown={(e) => handlePointerDown(e, hp)}
-        >
-          <sphereGeometry args={[0.25, 8, 8]} />
-          <meshBasicMaterial visible={false} />
+      {/* Rotating meshes group */}
+      <group ref={groupRef}>
+        {/* Head */}
+        <mesh material={material} position={[0, 0, 0]}>
+          <sphereGeometry args={[1, 160, 16]} />
         </mesh>
-      ))}
+        {/* Neck */}
+        <mesh material={material} position={[0, 1.56, 0]}>
+          <cylinderGeometry args={[0.04, 0.05, 0.14, 12]} />
+        </mesh>
+        {/* Torso */}
+        <mesh material={material} position={[0, 1.17, 0]}>
+          <cylinderGeometry args={[0.18, 0.15, 0.55, 16]} />
+        </mesh>
+        {/* Pelvis */}
+        <mesh material={material} position={[0, 0.85, 0]}>
+          <cylinderGeometry args={[0.15, 0.12, 0.18, 16]} />
+        </mesh>
+        {/* Left upper arm */}
+        <mesh material={material} position={[-0.26, 1.22, 0]} rotation={[0, 0, 0.1]}>
+          <cylinderGeometry args={[0.04, 0.035, 0.3, 10]} />
+        </mesh>
+        {/* Right upper arm */}
+        <mesh material={material} position={[0.26, 1.22, 0]} rotation={[0, 0, -0.1]}>
+          <cylinderGeometry args={[0.04, 0.035, 0.3, 10]} />
+        </mesh>
+        {/* Left forearm */}
+        <mesh material={material} position={[-0.28, 0.88, 0]}>
+          <cylinderGeometry args={[0.03, 0.025, 0.28, 10]} />
+        </mesh>
+        {/* Right forearm */}
+        <mesh material={material} position={[0.28, 0.88, 0]}>
+          <cylinderGeometry args={[0.03, 0.025, 0.28, 10]} />
+        </mesh>
+        {/* Left thigh */}
+        <mesh material={material} position={[-0.1, 0.6, 0]}>
+          <cylinderGeometry args={[0.065, 0.055, 0.35, 12]} />
+        </mesh>
+        {/* Right thigh */}
+        <mesh material={material} position={[0.1, 0.6, 0]}>
+          <cylinderGeometry args={[0.065, 0.055, 0.35, 12]} />
+        </mesh>
+        {/* Left shin */}
+        <mesh material={material} position={[-0.1, 0.24, 0]}>
+          <cylinderGeometry args={[0.045, 0.035, 0.35, 12]} />
+        </mesh>
+        {/* Right shin */}
+        <mesh material={material} position={[0.1, 0.24, 0]}>
+          <cylinderGeometry args={[0.045, 0.035, 0.35, 12]} />
+        </mesh>
+        {/* Left foot */}
+        <mesh material={material} position={[-0.1, 0.04, 0.05]}>
+          <boxGeometry args={[0.08, 0.04, 0.15]} />
+        </mesh>
+        {/* Right foot */}
+        <mesh material={material} position={[0.1, 0.04, 0.05]}>
+          <boxGeometry args={[0.08, 0.04, 0.15]} />
+        </mesh>
+
+        {/* Interactive Raycast Colliders (invisible but large for easy click targets) */}
+        {heatPoints.map((hp) => (
+          <mesh 
+            key={hp.id} 
+            position={hp.position}
+            onPointerDown={(e) => handlePointerDown(e, hp)}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={(e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'grab';
+            }}
+          >
+            <sphereGeometry args={[0.25, 8, 8]} />
+            <meshBasicMaterial visible={false} />
+          </mesh>
+        ))}
+      </group>
+
+      {activeSelectedPoint && (
+        <Html position={activeSelectedPoint.localPos} center distanceFactor={4}>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            {/* Glowing pointer dot */}
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: activeSelectedPoint.hp.color,
+              boxShadow: `0 0 10px ${activeSelectedPoint.hp.color}, 0 0 20px ${activeSelectedPoint.hp.color}`,
+              zIndex: 2,
+            }} />
+            
+            {/* Pulsing ring */}
+            <div style={{
+              position: 'absolute',
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              border: `2px solid ${activeSelectedPoint.hp.color}`,
+              boxShadow: `0 0 8px ${activeSelectedPoint.hp.color}`,
+              animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+              zIndex: 1,
+            }} />
+            
+            {/* Arrow line pointing to the dot */}
+            <div style={{
+              position: 'absolute',
+              bottom: '6px',
+              left: '6px',
+              width: '45px',
+              height: '30px',
+              borderLeft: `2px solid ${activeSelectedPoint.hp.color}`,
+              borderBottom: `2px solid ${activeSelectedPoint.hp.color}`,
+              transform: 'rotate(-45deg)',
+              transformOrigin: 'bottom left',
+              zIndex: 0,
+            }} />
+            
+            {/* Floating details tooltip box */}
+            <div style={{
+              position: 'absolute',
+              left: '42px',
+              bottom: '30px',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              border: `1.5px solid ${activeSelectedPoint.hp.color}`,
+              borderRadius: '8px',
+              padding: '8px 12px',
+              width: '180px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+              color: '#FFFFFF',
+              fontFamily: 'system-ui, sans-serif',
+              pointerEvents: 'auto',
+              zIndex: 3,
+            }}>
+              <div style={{ fontWeight: 800, fontSize: '11px', color: activeSelectedPoint.hp.color, textTransform: 'uppercase', marginBottom: '3px' }}>
+                {activeSelectedPoint.hp.label} Zone
+              </div>
+              <div style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1.3 }}>
+                {activeSelectedPoint.hp.description}
+              </div>
+            </div>
+          </div>
+        </Html>
+      )}
     </group>
   );
 };
@@ -297,8 +396,14 @@ const ModelWrapper: React.FC<{
     return heatPoints.findIndex(hp => hp.label === selectedZoneLabel);
   }, [selectedZoneLabel, heatPoints]);
 
+  const groupRef = useRef<THREE.Group>(null);
+
   // Update time and coordinates in uniforms
   useFrame((state) => {
+    // Slow Y-axis rotation (360 degrees) around the group pivot center
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.12;
+    }
     if (shaderRef.current) {
       shaderRef.current.uniforms.uTime.value = state.clock.getElapsedTime();
       shaderRef.current.uniforms.uBaseColor.value = baseColor;
@@ -354,21 +459,158 @@ const ModelWrapper: React.FC<{
     }
   };
 
+  // Local coordinates calculation for activeSelectedZone
+  const activeSelectedPoint = useMemo(() => {
+    if (!selectedZoneLabel) return null;
+    const hp = heatPoints.find(p => p.label === selectedZoneLabel);
+    if (!hp) return null;
+    const point = new THREE.Vector3(...hp.position);
+    point.sub(centerOffsetRef.current).multiplyScalar(modelScaleRef.current);
+    point.x = 0;
+    point.z = 0;
+    return { hp, localPos: point };
+  }, [selectedZoneLabel, heatPoints, centerOffsetRef, modelScaleRef]);
+
   return (
-    <primitive 
-      object={clonedScene} 
-      onPointerDown={handlePointerDown}
-    />
+    /* 
+      ADJUST MODEL POSITION HERE:
+      - Change the position={[x, y, z]} values below to translate the model's location on the screen.
+      - E.g. Increasing the middle 'y' value (e.g. to -0.5) moves the model upward; decreasing it (e.g. to -1.0) moves it downward.
+    */
+    <group position={[0, 0, 0]}>
+      <group ref={groupRef}>
+        <primitive 
+          object={clonedScene} 
+          onPointerDown={handlePointerDown}
+        />
+        {/* Interactive Raycast Colliders (invisible but large for easy click targets) */}
+        {heatPoints.map((hp) => {
+          const hpPos = new THREE.Vector3(...hp.position);
+          hpPos.sub(centerOffsetRef.current).multiplyScalar(modelScaleRef.current);
+          return (
+            <mesh 
+              key={hp.id} 
+              position={hpPos}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                onZoneClick(hp);
+              }}
+              onPointerOver={(e) => {
+                e.stopPropagation();
+                document.body.style.cursor = 'pointer';
+              }}
+              onPointerOut={(e) => {
+                e.stopPropagation();
+                document.body.style.cursor = 'grab';
+              }}
+            >
+              <sphereGeometry args={[0.25, 8, 8]} />
+              <meshBasicMaterial visible={false} />
+            </mesh>
+          );
+        })}
+      </group>
+      {activeSelectedPoint && (
+        <Html position={activeSelectedPoint.localPos} center distanceFactor={4}>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            {/* Glowing pointer dot */}
+            <div style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: activeSelectedPoint.hp.color,
+              boxShadow: `0 0 10px ${activeSelectedPoint.hp.color}, 0 0 20px ${activeSelectedPoint.hp.color}`,
+              zIndex: 2,
+            }} />
+            
+            {/* Pulsing ring */}
+            <div style={{
+              position: 'absolute',
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              border: `2px solid ${activeSelectedPoint.hp.color}`,
+              boxShadow: `0 0 8px ${activeSelectedPoint.hp.color}`,
+              animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite',
+              zIndex: 1,
+            }} />
+            
+            {/* Arrow line pointing to the dot */}
+            <div style={{
+              position: 'absolute',
+              bottom: '6px',
+              left: '6px',
+              width: '45px',
+              height: '30px',
+              borderLeft: `2px solid ${activeSelectedPoint.hp.color}`,
+              borderBottom: `2px solid ${activeSelectedPoint.hp.color}`,
+              transform: 'rotate(-45deg)',
+              transformOrigin: 'bottom left',
+              zIndex: 0,
+            }} />
+            
+            {/* Floating details tooltip box */}
+            <div style={{
+              position: 'absolute',
+              left: '42px',
+              bottom: '30px',
+              backgroundColor: 'rgba(15, 23, 42, 0.95)',
+              border: `1.5px solid ${activeSelectedPoint.hp.color}`,
+              borderRadius: '8px',
+              padding: '8px 12px',
+              width: '180px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
+              color: '#FFFFFF',
+              fontFamily: 'system-ui, sans-serif',
+              pointerEvents: 'auto',
+              zIndex: 3,
+            }}>
+              <div style={{ fontWeight: 800, fontSize: '11px', color: activeSelectedPoint.hp.color, textTransform: 'uppercase', marginBottom: '3px' }}>
+                {activeSelectedPoint.hp.label} Zone
+              </div>
+              <div style={{ fontSize: '10px', color: '#cbd5e1', lineHeight: 1.3 }}>
+                {activeSelectedPoint.hp.description}
+              </div>
+            </div>
+          </div>
+        </Html>
+      )}
+    </group>
   );
 };
 
 interface PatientBodyModelProps {
   heatPoints: HeatPoint[];
   height?: string;
+  selectedZoneLabel?: string;
+  onSelectZone?: (hp: HeatPoint | null) => void;
 }
 
-export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, height = '400px' }) => {
-  const [selectedZone, setSelectedZone] = useState<HeatPoint | null>(null);
+export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ 
+  heatPoints, 
+  height = '400px',
+  selectedZoneLabel,
+  onSelectZone
+}) => {
+  const [localSelectedZone, setLocalSelectedZone] = useState<HeatPoint | null>(null);
+
+  const activeSelectedZone = selectedZoneLabel
+    ? (heatPoints.find(hp => hp.label === selectedZoneLabel) || null)
+    : localSelectedZone;
+
+  const handleSelect = (hp: HeatPoint | null) => {
+    if (onSelectZone) {
+      onSelectZone(hp);
+    } else {
+      setLocalSelectedZone(hp);
+    }
+  };
 
   const centerOffsetRef = useRef(new THREE.Vector3(0, 0, 0));
   const modelScaleRef = useRef(1.0);
@@ -379,6 +621,12 @@ export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, 
 
   return (
     <div 
+      onMouseEnter={() => {
+        document.body.style.cursor = 'grab';
+      }}
+      onMouseLeave={() => {
+        document.body.style.cursor = 'auto';
+      }}
       style={{ 
         position: 'relative', 
         width: '100%', 
@@ -386,7 +634,8 @@ export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, 
         backgroundColor: '#020617', // ALWAYS dark terminal background in all themes
         borderRadius: 'var(--radius-lg)', 
         border: '1px solid rgba(255, 255, 255, 0.08)', // subtle dark border
-        overflow: 'hidden' 
+        overflow: 'hidden',
+        cursor: 'grab'
       }}
     >
       <Canvas camera={{ position: [0, 0.2, 5.0], fov: 42 }}>
@@ -399,37 +648,43 @@ export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, 
         <GLTFErrorBoundary fallback={
           <MannequinFallback 
             heatPoints={activeHeatpoints} 
-            onZoneClick={(hp) => setSelectedZone(hp)} 
-            selectedZoneLabel={selectedZone?.label}
+            onZoneClick={handleSelect} 
+            selectedZoneLabel={activeSelectedZone?.label}
           />
         }>
           <ModelWrapper 
             heatPoints={activeHeatpoints} 
-            onZoneClick={(hp) => setSelectedZone(hp)}
+            onZoneClick={handleSelect}
             centerOffsetRef={centerOffsetRef}
             modelScaleRef={modelScaleRef}
-            selectedZoneLabel={selectedZone?.label}
+            selectedZoneLabel={activeSelectedZone?.label}
           />
         </GLTFErrorBoundary>
         
         <OrbitControls 
           enablePan={false}
-          minDistance={1.8}
-          maxDistance={7.0}
-          maxPolarAngle={Math.PI / 2 + 0.3}
-          minPolarAngle={Math.PI / 2 - 0.6}
+          minDistance={3.0}
+          maxDistance={5.0}
+          maxPolarAngle={Math.PI / 2 + 0.2}
+          minPolarAngle={Math.PI / 2 - 0.2}
+          onStart={() => {
+            document.body.style.cursor = 'grabbing';
+          }}
+          onEnd={() => {
+            document.body.style.cursor = 'grab';
+          }}
         />
       </Canvas>
 
       {/* Raycast Callout Overlay */}
-      {selectedZone ? (
+      {activeSelectedZone ? (
         <div
           style={{
             position: 'absolute',
             bottom: '16px',
             left: '16px',
             right: '16px',
-            backgroundColor: 'rgba(15, 23, 42, 0.95)', // dark overlay
+            backgroundColor: 'rgba(0, 0, 0, 0.95)', // dark overlay
             border: '1px solid rgba(255, 255, 255, 0.15)',
             borderRadius: 'var(--radius)',
             padding: '12px 16px',
@@ -443,14 +698,14 @@ export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, 
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <span style={{ fontSize: '14px', fontWeight: 700, color: '#f8fafc' }}>
-              🎯 {selectedZone.label}
+              🎯 {activeSelectedZone.label}
             </span>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>
-              {selectedZone.description}
+              {activeSelectedZone.description}
             </span>
           </div>
           <button
-            onClick={() => setSelectedZone(null)}
+            onClick={() => handleSelect(null)}
             style={{
               background: 'none',
               border: 'none',
@@ -469,6 +724,12 @@ export const PatientBodyModel: React.FC<PatientBodyModelProps> = ({ heatPoints, 
           💡 Drag to rotate | Scroll to zoom | Click hotspots
         </div>
       )}
+      <style>{`
+        @keyframes ping {
+          0% { transform: scale(0.6); opacity: 1; }
+          100% { transform: scale(1.8); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 };
